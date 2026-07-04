@@ -1,0 +1,5 @@
+2026-07-04 05:10:51.587 -07:00 [INF] File watcher started for D:/PHIM
+2026-07-04 05:10:53.970 -07:00 [INF] Now listening on: http://0.0.0.0:5000
+2026-07-04 05:10:53.971 -07:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-07-04 05:10:53.971 -07:00 [INF] Hosting environment: Production
+2026-07-04 05:10:53.971 -07:00 [INF] Content root path: D:\LOCAL MEDIA SERVER (NAS MINI)\backend\LocalMediaServer

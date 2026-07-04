@@ -1,0 +1,4 @@
+D:\LOCAL MEDIA SERVER (NAS MINI)\obj\Release\net10.0\win-x64\MediaServerLauncher.GeneratedMSBuildEditorConfig.editorconfig
+D:\LOCAL MEDIA SERVER (NAS MINI)\obj\Release\net10.0\win-x64\MediaServerLauncher.AssemblyInfoInputs.cache
+D:\LOCAL MEDIA SERVER (NAS MINI)\obj\Release\net10.0\win-x64\MediaServerLauncher.AssemblyInfo.cs
+D:\LOCAL MEDIA SERVER (NAS MINI)\obj\Release\net10.0\win-x64\MediaServerLauncher.csproj.CoreCompileInputs.cache
