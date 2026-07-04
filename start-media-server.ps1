@@ -1,7 +1,7 @@
 # Local Media Server Launcher
 Add-Type -AssemblyName System.Windows.Forms
 
-$basePath = "D:\LOCAL MEDIA SERVER (NAS MINI)"
+$basePath = $PSScriptRoot
 $backendPath = Join-Path $basePath "backend\LocalMediaServer"
 $frontendPath = Join-Path $basePath "frontend"
 
