@@ -34,15 +34,15 @@ echo Waiting for frontend...
 timeout /t 5 /nobreak >nul
 
 echo Opening browser...
-start http://127.0.0.1:5173
+start https://127.0.0.1:5173
 
 echo.
 echo ════════════════════════════════════════
 echo   ✓ Local Media Server Started!
 echo ════════════════════════════════════════
 echo.
-echo Local Access:  http://127.0.0.1:5173
-echo LAN Access:    http://!LANIP!:5173
+echo Local Access:  https://127.0.0.1:5173
+echo LAN Access:    https://!LANIP!:5173
 echo.
 echo Backend API:   http://127.0.0.1:5000
 echo.
