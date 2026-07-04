@@ -48,7 +48,7 @@ Write-Host "✓ Frontend started`n" -ForegroundColor Green
 Write-Host "Opening browser..." -ForegroundColor Cyan
 Write-Host ""
 
-Start-Process "http://192.168.2.10:5173"
+Start-Process "http://127.0.0.1:5173"
 
 # Print info
 Write-Host "════════════════════════════════════════" -ForegroundColor Green
@@ -56,7 +56,7 @@ Write-Host "   Local Media Server Started!" -ForegroundColor Green
 Write-Host "════════════════════════════════════════" -ForegroundColor Green
 Write-Host ""
 
-Write-Host "Local Access:  http://192.168.2.10:5173" -ForegroundColor Cyan
+Write-Host "Local Access:  http://127.0.0.1:5173" -ForegroundColor Cyan
 Write-Host "LAN Access:    http://$lanIP:5173" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Backend API:   http://127.0.0.1:5000" -ForegroundColor Cyan
