@@ -55,12 +55,8 @@ if "!BACKEND_OK!"=="0" (
 echo [OK] Backend đã sẵn sàng!
 echo [3/3] Đang khởi động Frontend...
 
-if not exist "%~dp0frontend\node_modules" (
-    echo Đang cài đặt thư viện Frontend...
-    start "Local Media Server Frontend" cmd /k "cd /d ""%~dp0frontend"" && npm install && npm run dev -- --host 0.0.0.0 --port 5173"
-) else (
-    start "Local Media Server Frontend" cmd /k "cd /d ""%~dp0frontend"" && npm run dev -- --host 0.0.0.0 --port 5173"
-)
+echo Đang kiểm tra thư viện Frontend...
+start "Local Media Server Frontend" cmd /k "cd /d ""%~dp0frontend"" && npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5173"
 
 echo ==========================================
 echo Server đã khởi động thành công!
