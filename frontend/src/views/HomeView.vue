@@ -96,8 +96,14 @@
             {{ sortDirection === 'asc' ? '🔼 Asc' : '🔽 Desc' }}
           </button>
           
-          <button @click="toggleViewMode" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 transition flex items-center justify-center gap-1" title="Toggle View">
-            {{ viewMode === 'table' ? '🗂️ Card' : '📄 Table' }}
+          <button @click="viewMode = 'table'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition', viewMode === 'table' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
+            📄 Table
+          </button>
+          <button @click="viewMode = 'card'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition', viewMode === 'card' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
+            🗂️ Card
+          </button>
+          <button @click="viewMode = 'gallery'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition', viewMode === 'gallery' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
+            🖼️ Gallery
           </button>
         </div>
         
@@ -166,38 +172,42 @@
 
         <!-- Card View -->
         <div v-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-sky-500/50 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-sky-900/20 transition cursor-pointer flex flex-col group relative overflow-hidden">
+          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="bg-slate-900 border border-slate-800 rounded-2xl hover:border-sky-500/50 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-sky-900/20 transition cursor-pointer flex flex-col group relative overflow-hidden">
             
-            <div class="flex justify-between items-start mb-4">
-              <!-- Video Thumbnail Preview -->
-              <div v-if="isVideo(item)" class="w-full aspect-video mb-3 rounded-xl overflow-hidden bg-slate-800/50 flex items-center justify-center relative">
-                <img :src="getThumbnailUrl(item)" @error="$event.target.style.display='none'; $event.target.nextSibling.style.display='block'" class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy">
-                <span class="text-4xl absolute group-hover:scale-110 transition-transform drop-shadow-lg" style="display: none">🎬</span>
-                <!-- Play Overlay -->
-                <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                  <div class="w-10 h-10 rounded-full bg-sky-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:scale-110 shadow-lg backdrop-blur-sm">
-                    <svg class="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"/></svg>
-                  </div>
+            <!-- Video Thumbnail Preview -->
+            <div v-if="isVideo(item)" class="w-full aspect-video bg-slate-800/50 relative overflow-hidden flex items-center justify-center border-b border-slate-800">
+              <img :src="getThumbnailUrl(item)" @error="$event.target.style.display='none'; $event.target.nextSibling.style.display='block'" class="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy">
+              <span class="text-4xl absolute transition-transform drop-shadow-lg group-hover:scale-110" style="display: none">🎬</span>
+              <!-- Play Overlay -->
+              <div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <div class="w-12 h-12 rounded-full bg-sky-500/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 shadow-xl backdrop-blur-md">
+                  <svg class="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"/></svg>
                 </div>
               </div>
-              <div v-else class="text-5xl drop-shadow-md">{{ getIcon(item) }}</div>
+              <!-- Badge Floating -->
+              <div class="absolute top-3 right-3 bg-slate-900/80 backdrop-blur text-purple-400 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-lg">Video</div>
+            </div>
 
-              <div v-if="item.isDirectory" class="bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Folder</div>
-              <div v-else-if="isVideo(item)" class="bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Video</div>
-              <div v-else-if="isImage(item)" class="bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Image</div>
-              <div v-else class="bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">File</div>
+            <!-- Header for Non-Video -->
+            <div v-else class="flex justify-between items-start p-5 pb-3">
+              <div class="text-5xl drop-shadow-md group-hover:scale-110 transition-transform origin-bottom-left">{{ getIcon(item) }}</div>
+              <div v-if="item.isDirectory" class="bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg">Folder</div>
+              <div v-else-if="isImage(item)" class="bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg">Image</div>
+              <div v-else class="bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg">File</div>
             </div>
             
-            <h3 class="font-semibold text-slate-100 text-lg mb-1 truncate" :title="item.name">{{ item.name }}</h3>
+            <div class="p-5 pt-3 flex flex-col flex-1">
+              <h3 class="font-semibold text-slate-100 text-base mb-1 truncate group-hover:text-sky-400 transition-colors" :title="item.name">{{ item.name }}</h3>
             
-            <div class="flex flex-col gap-1 mt-auto pt-4 border-t border-slate-800/50">
-              <div class="flex justify-between text-xs text-slate-400">
-                <span>Date:</span>
-                <span>{{ formatDate(item.lastModified).split(',')[0] }}</span>
-              </div>
-              <div class="flex justify-between text-xs text-slate-400">
-                <span>Size:</span>
-                <span>{{ item.sizeFormatted || '-' }}</span>
+              <div class="flex flex-col gap-1 mt-auto pt-4 border-t border-slate-800/50">
+                <div class="flex justify-between text-xs text-slate-400">
+                  <span>Date:</span>
+                  <span>{{ formatDate(item.lastModified).split(',')[0] }}</span>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400">
+                  <span>Size:</span>
+                  <span>{{ item.sizeFormatted || '-' }}</span>
+                </div>
               </div>
             </div>
             
@@ -215,6 +225,30 @@
                 🔓
               </button>
             </template>
+          </div>
+        </div>
+
+        <!-- Gallery View -->
+        <div v-if="viewMode === 'gallery'" class="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4 space-y-4">
+          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="break-inside-avoid bg-slate-900 border border-slate-800 rounded-2xl hover:border-sky-500/50 hover:shadow-lg hover:shadow-sky-900/20 transition cursor-pointer group relative overflow-hidden">
+            
+            <!-- Image / Video Thumbnail -->
+            <div v-if="isImage(item) || isVideo(item)" class="w-full relative overflow-hidden bg-slate-800/50">
+              <img :src="isImage(item) ? getImageUrl(item) : getThumbnailUrl(item)" @error="$event.target.style.display='none'; $event.target.nextSibling.style.display='block'" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
+              <span class="text-4xl absolute inset-0 flex items-center justify-center transition-transform drop-shadow-lg group-hover:scale-110" style="display: none">{{ isVideo(item) ? '🎬' : '🖼️' }}</span>
+              
+              <div v-if="isVideo(item)" class="absolute top-2 right-2 bg-slate-900/80 backdrop-blur text-purple-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-lg">Video</div>
+            </div>
+
+            <!-- Non-Media Fallback -->
+            <div v-else class="w-full aspect-square flex flex-col items-center justify-center bg-slate-800/50 p-4">
+              <div class="text-5xl drop-shadow-md group-hover:scale-110 transition-transform mb-2">{{ getIcon(item) }}</div>
+              <div v-if="item.isDirectory" class="bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Folder</div>
+            </div>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-slate-950 via-slate-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+              <h3 class="font-medium text-white text-sm truncate" :title="item.name">{{ item.name }}</h3>
+            </div>
           </div>
         </div>
       </div>
@@ -237,6 +271,13 @@
               </template>
               
               <div class="hidden sm:block w-px h-6 bg-slate-700 mx-1"></div>
+              
+              <template v-if="isImage(selectedMedia) || isVideo(selectedMedia)">
+                <!-- Slideshow Button -->
+                <button @click="toggleSlideshow" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg text-xs sm:text-sm transition flex items-center gap-1 font-medium">
+                  {{ slideshowInterval ? '⏸ Stop' : '▶ Slideshow' }}
+                </button>
+              </template>
               
               <template v-if="isImage(selectedMedia)">
                 <button @click="zoomOut" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">−</button>
@@ -458,6 +499,16 @@ async function loadItems() {
     const password = unlockedPasswords.value[path] || '';
     const response = await axios.get(`${base}/api/files`, { params: { path, password } });
     items.value = response.data;
+    
+    // Auto-detect Gallery Mode
+    if (items.value.length > 0) {
+      const mediaCount = items.value.filter(i => isImage(i) || isVideo(i)).length;
+      if (mediaCount / items.value.length >= 0.5) {
+        viewMode.value = 'gallery';
+      } else {
+        viewMode.value = 'card';
+      }
+    }
   } catch (error) {
     if (error.response?.status === 401 && error.response?.data === 'LOCKED') {
       loading.value = false;
@@ -570,17 +621,36 @@ function selectMedia(item) {
   }
 }
 
+let slideshowInterval = ref(null);
+
+function toggleSlideshow() {
+  if (slideshowInterval.value) {
+    clearInterval(slideshowInterval.value);
+    slideshowInterval.value = null;
+  } else {
+    slideshowInterval.value = setInterval(() => {
+      showNextMedia();
+    }, 4000); // 4 seconds per slide
+  }
+}
+
 function showPreviousMedia() {
   const mediaItems = items.value.filter(item => !item.isDirectory && (isVideo(item) || isImage(item)));
   const currentIndex = mediaItems.findIndex(item => item.relativePath === selectedMedia.value?.relativePath);
-  if (currentIndex <= 0) return;
+  if (currentIndex <= 0) {
+    if (slideshowInterval.value) toggleSlideshow();
+    return;
+  }
   selectMedia(mediaItems[currentIndex - 1]);
 }
 
 function showNextMedia() {
   const mediaItems = items.value.filter(item => !item.isDirectory && (isVideo(item) || isImage(item)));
   const currentIndex = mediaItems.findIndex(item => item.relativePath === selectedMedia.value?.relativePath);
-  if (currentIndex === -1 || currentIndex >= mediaItems.length - 1) return;
+  if (currentIndex === -1 || currentIndex >= mediaItems.length - 1) {
+    if (slideshowInterval.value) toggleSlideshow();
+    return;
+  }
   selectMedia(mediaItems[currentIndex + 1]);
 }
 
@@ -588,6 +658,7 @@ function closeViewer() {
   if (videoRef.value) {
     videoRef.value.pause();
   }
+  if (slideshowInterval.value) toggleSlideshow();
   selectedMedia.value = null;
   imageScale.value = 1;
   isMuted.value = false;
