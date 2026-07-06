@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [vue(), basicSsl()],
+  plugins: [vue(), basicSsl(), tailwindcss()],
   server: {
     host: '0.0.0.0',
     port: 5173,
