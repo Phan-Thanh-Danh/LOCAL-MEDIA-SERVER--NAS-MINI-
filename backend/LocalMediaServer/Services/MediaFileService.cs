@@ -30,13 +30,23 @@ public class MediaFileService : IMediaFileService
             throw new DirectoryNotFoundException($"Directory not found: {absolutePath}");
         }
 
-        var entries = Directory.GetFileSystemEntries(absolutePath)
-            .Select(path => CreateItem(path))
+        var entries = new List<FileItemDto>();
+        foreach (var path in Directory.GetFileSystemEntries(absolutePath))
+        {
+            try
+            {
+                entries.Add(CreateItem(path));
+            }
+            catch (Exception)
+            {
+                // Skip files or directories that cannot be accessed due to permissions or being locked
+            }
+        }
+
+        return entries
             .OrderByDescending(x => x.IsDirectory)
             .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
-
-        return entries;
     }
 
     public FileStream OpenReadStream(string relativePath)
@@ -107,16 +117,37 @@ public class MediaFileService : IMediaFileService
         var mimeType = isDirectory ? "application/x-directory" : GetMimeType(extension);
         var relativePath = GetRelativePath(entry.FullName);
 
+        long size = 0;
+        string sizeFormatted = string.Empty;
+        DateTimeOffset lastModified = DateTimeOffset.MinValue;
+        DateTimeOffset createdDate = DateTimeOffset.MinValue;
+
+        try
+        {
+            if (!isDirectory)
+            {
+                var fileInfo = new FileInfo(entry.FullName);
+                size = fileInfo.Length;
+                sizeFormatted = FormatSize(size);
+            }
+            lastModified = entry.LastWriteTimeUtc;
+            createdDate = entry.CreationTimeUtc;
+        }
+        catch (Exception)
+        {
+            // Ignore if we can't read metadata (e.g. file locked by another process)
+        }
+
         return new FileItemDto
         {
             Name = entry.Name,
             RelativePath = relativePath,
             Extension = extension,
             Type = isDirectory ? "File folder" : GetTypeLabel(extension),
-            Size = isDirectory ? 0 : new FileInfo(entry.FullName).Length,
-            SizeFormatted = isDirectory ? string.Empty : FormatSize(new FileInfo(entry.FullName).Length),
-            LastModified = entry.LastWriteTimeUtc,
-            CreatedDate = entry.CreationTimeUtc,
+            Size = size,
+            SizeFormatted = sizeFormatted,
+            LastModified = lastModified,
+            CreatedDate = createdDate,
             IsDirectory = isDirectory,
             MimeType = mimeType
         };
