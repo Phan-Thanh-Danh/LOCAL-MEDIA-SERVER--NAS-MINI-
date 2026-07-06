@@ -3,16 +3,16 @@
     <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6">
       
       <!-- Header -->
-      <header class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl p-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
+      <header class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl p-4 sm:p-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
             Local Media Server
-            <span class="px-2 py-1 bg-sky-500/20 text-sky-400 text-xs font-semibold rounded-md uppercase tracking-wider">LAN Storage</span>
+            <span class="px-2 py-1 bg-sky-500/20 text-sky-400 text-[10px] sm:text-xs font-semibold rounded-md uppercase tracking-wider">LAN Storage</span>
           </h1>
-          <p class="text-slate-400 text-sm mt-1">NAS Mini File Explorer</p>
+          <p class="text-slate-400 text-xs sm:text-sm mt-1">NAS Mini File Explorer</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button @click="refresh" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
+        <div class="flex w-full md:w-auto gap-2">
+          <button @click="refresh" class="w-full md:w-auto bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-xl font-medium transition flex items-center justify-center gap-2">
             <span>🔄</span> Refresh
           </button>
         </div>
@@ -40,13 +40,13 @@
         </div>
 
         <!-- Action Toolbar -->
-        <div v-if="!selectedMedia" class="flex flex-wrap items-center gap-3">
-          <button @click="handleCreateFolder" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
-            <span>➕📁</span> New Folder
+        <div v-if="!selectedMedia" class="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
+          <button @click="handleCreateFolder" class="flex-1 lg:flex-none justify-center bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-medium transition flex items-center gap-2">
+            <span>➕📁</span> <span class="hidden sm:inline">New Folder</span><span class="sm:hidden">Folder</span>
           </button>
           
-          <button @click="triggerFileInput" class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
-            <span>📤</span> Upload File
+          <button @click="triggerFileInput" class="flex-1 lg:flex-none justify-center bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-medium transition flex items-center gap-2">
+            <span>📤</span> <span class="hidden sm:inline">Upload File</span><span class="sm:hidden">Upload</span>
           </button>
           <input type="file" ref="fileInput" @change="handleUploadFile" class="hidden" accept="video/*,image/*" />
         </div>
@@ -113,26 +113,26 @@
           <table class="w-full text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800/80 text-slate-400 uppercase text-xs tracking-wider">
               <tr>
-                <th class="px-6 py-4 font-medium">Name</th>
-                <th class="px-6 py-4 font-medium">Date modified</th>
-                <th class="px-6 py-4 font-medium">Type</th>
-                <th class="px-6 py-4 font-medium">Size</th>
-                <th class="px-6 py-4 font-medium text-right">Actions</th>
+                <th class="px-4 py-3 sm:px-6 sm:py-4 font-medium">Name</th>
+                <th class="px-4 py-3 sm:px-6 sm:py-4 font-medium hidden sm:table-cell">Date modified</th>
+                <th class="px-4 py-3 sm:px-6 sm:py-4 font-medium hidden md:table-cell">Type</th>
+                <th class="px-4 py-3 sm:px-6 sm:py-4 font-medium hidden sm:table-cell">Size</th>
+                <th class="px-4 py-3 sm:px-6 sm:py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/50">
               <tr v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="hover:bg-slate-800/60 transition cursor-pointer group">
-                <td class="px-6 py-4 flex items-center gap-3">
-                  <span class="text-2xl">{{ getIcon(item) }}</span>
-                  <span class="font-medium text-slate-200 truncate max-w-[200px] md:max-w-md lg:max-w-lg">{{ item.name }}</span>
+                <td class="px-4 py-3 sm:px-6 sm:py-4 flex items-center gap-3">
+                  <span class="text-xl sm:text-2xl">{{ getIcon(item) }}</span>
+                  <span class="font-medium text-slate-200 truncate max-w-[150px] sm:max-w-[200px] md:max-w-md lg:max-w-lg">{{ item.name }}</span>
                 </td>
-                <td class="px-6 py-4 text-slate-400">{{ formatDate(item.lastModified) }}</td>
-                <td class="px-6 py-4">
+                <td class="px-4 py-3 sm:px-6 sm:py-4 text-slate-400 hidden sm:table-cell">{{ formatDate(item.lastModified) }}</td>
+                <td class="px-4 py-3 sm:px-6 sm:py-4 hidden md:table-cell">
                   <span class="px-2 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300">{{ item.type }}</span>
                 </td>
-                <td class="px-6 py-4 text-slate-400">{{ item.sizeFormatted || '-' }}</td>
-                <td class="px-6 py-4 text-right">
-                  <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="opacity-0 group-hover:opacity-100 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ml-auto">
+                <td class="px-4 py-3 sm:px-6 sm:py-4 text-slate-400 hidden sm:table-cell">{{ item.sizeFormatted || '-' }}</td>
+                <td class="px-4 py-3 sm:px-6 sm:py-4 text-right">
+                  <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="sm:opacity-0 sm:group-hover:opacity-100 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ml-auto">
                     ⬇ DL
                   </button>
                   <span v-else class="text-slate-600">-</span>
@@ -188,31 +188,31 @@
               <h2 class="text-white font-medium truncate max-w-[200px] sm:max-w-xs md:max-w-md">{{ selectedMedia.name }}</h2>
             </div>
             
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            <div class="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide flex-nowrap w-full md:w-auto">
               <template v-if="mediaNavigationAvailable">
-                <button @click="showPreviousMedia" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">← Prev</button>
-                <button @click="showNextMedia" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">Next →</button>
+                <button @click="showPreviousMedia" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">← Prev</button>
+                <button @click="showNextMedia" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">Next →</button>
               </template>
               
-              <div class="w-px h-6 bg-slate-700 mx-1"></div>
+              <div class="hidden sm:block w-px h-6 bg-slate-700 mx-1"></div>
               
               <template v-if="isImage(selectedMedia)">
-                <button @click="zoomOut" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">−</button>
-                <button @click="resetZoom" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">100%</button>
-                <button @click="zoomIn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">+</button>
+                <button @click="zoomOut" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">−</button>
+                <button @click="resetZoom" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">100%</button>
+                <button @click="zoomIn" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">+</button>
               </template>
               
               <template v-if="isVideo(selectedMedia)">
-                <button @click="toggleMute" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">{{ isMuted ? 'Unmute' : 'Mute' }}</button>
-                <button @click="setPlaybackRate(1)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">1x</button>
-                <button @click="setPlaybackRate(1.5)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">1.5x</button>
-                <button @click="setPlaybackRate(2)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">2x</button>
+                <button @click="toggleMute" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">{{ isMuted ? 'Unmute' : 'Mute' }}</button>
+                <button @click="setPlaybackRate(1)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">1x</button>
+                <button @click="setPlaybackRate(1.5)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">1.5x</button>
+                <button @click="setPlaybackRate(2)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs sm:text-sm transition">2x</button>
               </template>
               
-              <div class="w-px h-6 bg-slate-700 mx-1"></div>
+              <div class="hidden sm:block w-px h-6 bg-slate-700 mx-1"></div>
               
-              <button @click="downloadFile(selectedMedia)" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">DL</button>
-              <button @click="closeViewer" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition ml-1">Close</button>
+              <button @click="downloadFile(selectedMedia)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs sm:text-sm font-medium transition">DL</button>
+              <button @click="closeViewer" class="whitespace-nowrap px-3 sm:px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs sm:text-sm font-medium transition ml-1">Close</button>
             </div>
           </div>
           
