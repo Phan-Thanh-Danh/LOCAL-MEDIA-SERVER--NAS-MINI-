@@ -127,7 +127,11 @@ async function loadItems() {
     items.value = response.data;
   } catch (error) {
     console.error("Lỗi khi load danh sách file:", error);
-    alert("Không thể kết nối tới Backend. Hãy kiểm tra xem Backend đã chạy chưa.");
+    console.error("Message:", error.message);
+    console.error("Code:", error.code);
+    console.error("Status:", error.response?.status);
+    console.error("Data:", error.response?.data);
+    alert("Không thể kết nối Backend. Kiểm tra backend port 5000 hoặc chạy file BAT.");
   } finally {
     loading.value = false;
   }
