@@ -14,6 +14,9 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog();
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => {
+    options.MultipartBodyLengthLimit = 5242880000; // Cho phép file tối đa ~5GB
+});
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddCors(options =>

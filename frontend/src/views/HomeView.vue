@@ -12,6 +12,17 @@
       </button>
     </div>
 
+    <div class="action-toolbar" v-if="!selectedMedia">
+      <button @click="handleCreateFolder" class="toolbar-btn text-yellow">
+        <span>➕📁</span> New Folder
+      </button>
+      
+      <button @click="triggerFileInput" class="toolbar-btn text-blue">
+        <span>📤</span> Upload File
+      </button>
+      <input type="file" ref="fileInput" @change="handleUploadFile" style="display: none;" accept="video/*,image/*" />
+    </div>
+
     <div v-if="loading">Loading...</div>
     <div v-else>
       <table>
@@ -84,6 +95,7 @@ const history = ref([]);
 const videoRef = ref(null);
 const imageScale = ref(1);
 const isMuted = ref(false);
+const fileInput = ref(null);
 
 const currentPath = computed(() => {
   const value = route.query.path;
@@ -220,6 +232,66 @@ function refresh() {
   loadItems();
 }
 
+async function handleCreateFolder() {
+  const folderName = prompt("Nhập tên thư mục cần tạo:");
+  if (!folderName) return;
+
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const response = await fetch(`${base}/api/media/create-folder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        folderName: folderName,
+        subPath: currentPath.value
+      })
+    });
+
+    if (response.ok) {
+      alert("Đã tạo thư mục thành công!");
+      loadItems();
+    } else {
+      const err = await response.text();
+      alert("Lỗi: " + err);
+    }
+  } catch (error) {
+    alert("Không thể kết nối đến Server");
+  }
+}
+
+function triggerFileInput() {
+  fileInput.value.click();
+}
+
+async function handleUploadFile(event) {
+  const files = event.target.files;
+  if (files.length === 0) return;
+
+  const formData = new FormData();
+  formData.append("file", files[0]);
+  formData.append("subPath", currentPath.value);
+
+  try {
+    console.log("Đang tải file lên...");
+    const base = import.meta.env.VITE_API_BASE || '';
+    const response = await fetch(`${base}/api/media/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      alert("Tải file lên thành công!");
+      loadItems();
+    } else {
+      alert("Tải file thất bại.");
+    }
+  } catch (error) {
+    alert("Có lỗi xảy ra trong quá trình upload.");
+  } finally {
+    event.target.value = '';
+  }
+}
+
 function mediaUrl(item) {
   const base = import.meta.env.VITE_API_BASE || '';
   const path = item.relativePath
@@ -260,6 +332,34 @@ onMounted(() => {
   gap: 8px;
   flex-wrap: wrap;
 }
+
+.action-toolbar {
+  display: flex;
+  gap: 15px;
+  background-color: #202020;
+  border: 1px solid #333;
+  padding: 8px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+.toolbar-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.toolbar-btn:hover {
+  background-color: #2d2d2d;
+}
+.text-yellow { color: #ffca28; }
+.text-blue { color: #42a5f5; }
 
 button {
   cursor: pointer;

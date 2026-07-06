@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LocalMediaServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cf5bae8c3706217b77c20e54806d50b58963ef49")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d874f843db1771e19720e8dc5108924d74255cbb")]
 [assembly: System.Reflection.AssemblyProductAttribute("LocalMediaServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LocalMediaServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
