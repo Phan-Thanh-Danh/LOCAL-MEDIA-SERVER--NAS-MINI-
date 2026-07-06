@@ -9,17 +9,27 @@ namespace LocalMediaServer.Controllers;
 public class FilesController : ControllerBase
 {
     private readonly IMediaFileService _mediaFileService;
+    private readonly FolderSecurityService _securityService;
 
-    public FilesController(IMediaFileService mediaFileService)
+    public FilesController(IMediaFileService mediaFileService, FolderSecurityService securityService)
     {
         _mediaFileService = mediaFileService;
+        _securityService = securityService;
     }
 
     [HttpGet]
-    public ActionResult<FileItemDto[]> Get([FromQuery] string? path)
+    public ActionResult<FileItemDto[]> Get([FromQuery] string? path, [FromQuery] string? password = null)
     {
         try
         {
+            if (!string.IsNullOrEmpty(path))
+            {
+                var absolutePath = _mediaFileService.GetAbsolutePath(path);
+                if (!_securityService.IsAccessGranted(absolutePath, password))
+                {
+                    return StatusCode(401, "LOCKED");
+                }
+            }
             return Ok(_mediaFileService.ListDirectory(path));
         }
         catch (DirectoryNotFoundException ex)

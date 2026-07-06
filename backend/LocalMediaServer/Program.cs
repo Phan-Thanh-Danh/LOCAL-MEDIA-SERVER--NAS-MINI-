@@ -30,6 +30,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.Configure<MediaServerOptions>(builder.Configuration.GetSection(MediaServerOptions.SectionName));
+builder.Services.AddSingleton<FolderSecurityService>();
 builder.Services.AddSingleton<IMediaFileService, MediaFileService>();
 builder.Services.AddSingleton<FileWatcherService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<FileWatcherService>());

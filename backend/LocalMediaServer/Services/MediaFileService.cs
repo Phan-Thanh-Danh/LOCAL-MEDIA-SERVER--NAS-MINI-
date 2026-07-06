@@ -16,10 +16,12 @@ public interface IMediaFileService
 public class MediaFileService : IMediaFileService
 {
     private readonly MediaServerOptions _options;
+    private readonly FolderSecurityService _securityService;
 
-    public MediaFileService(IOptions<MediaServerOptions> options)
+    public MediaFileService(IOptions<MediaServerOptions> options, FolderSecurityService securityService)
     {
         _options = options.Value;
+        _securityService = securityService;
     }
 
     public FileItemDto[] ListDirectory(string? subPath)
@@ -143,6 +145,8 @@ public class MediaFileService : IMediaFileService
             // Ignore if we can't read metadata (e.g. file locked by another process)
         }
 
+        bool isLocked = isDirectory && !_securityService.IsAccessGranted(entry.FullName, null);
+
         return new FileItemDto
         {
             Name = entry.Name,
@@ -154,6 +158,7 @@ public class MediaFileService : IMediaFileService
             LastModified = lastModified,
             CreatedDate = createdDate,
             IsDirectory = isDirectory,
+            IsLocked = isLocked,
             MimeType = mimeType
         };
     }

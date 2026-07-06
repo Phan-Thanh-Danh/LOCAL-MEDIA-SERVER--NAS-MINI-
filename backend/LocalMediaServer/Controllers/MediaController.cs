@@ -8,10 +8,12 @@ namespace LocalMediaServer.Controllers;
 public class MediaController : ControllerBase
 {
     private readonly IMediaFileService _mediaFileService;
+    private readonly FolderSecurityService _securityService;
 
-    public MediaController(IMediaFileService mediaFileService)
+    public MediaController(IMediaFileService mediaFileService, FolderSecurityService securityService)
     {
         _mediaFileService = mediaFileService;
+        _securityService = securityService;
     }
 
     [HttpGet("video/{*path}")]
@@ -179,10 +181,55 @@ public class MediaController : ControllerBase
         Directory.CreateDirectory(targetFolder);
         return Ok(new { Message = "Tạo thư mục thành công!" });
     }
+    [HttpPost("lock")]
+    public IActionResult LockFolder([FromBody] LockFolderRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest("Mật khẩu không được để trống.");
+
+        try
+        {
+            var absolutePath = _mediaFileService.GetAbsolutePath(request.Path);
+            _securityService.LockFolder(absolutePath, request.Password);
+            return Ok(new { Message = "Đã khóa thư mục thành công!" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Lỗi: {ex.Message}");
+        }
+    }
+
+    [HttpPost("unlock")]
+    public IActionResult UnlockFolder([FromBody] LockFolderRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest("Mật khẩu không được để trống.");
+
+        try
+        {
+            var absolutePath = _mediaFileService.GetAbsolutePath(request.Path);
+            _securityService.UnlockFolder(absolutePath, request.Password);
+            return Ok(new { Message = "Đã bỏ khóa thư mục thành công!" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Lỗi: {ex.Message}");
+        }
+    }
 }
 
 public class CreateFolderRequest
 {
     public string FolderName { get; set; } = string.Empty;
     public string? SubPath { get; set; } = string.Empty;
+}
+
+public class LockFolderRequest
+{
+    public string? Path { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }

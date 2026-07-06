@@ -11,5 +11,6 @@ public class FileItemDto
     public DateTimeOffset LastModified { get; set; }
     public DateTimeOffset CreatedDate { get; set; }
     public bool IsDirectory { get; set; }
+    public bool IsLocked { get; set; }
     public string MimeType { get; set; } = string.Empty;
 }

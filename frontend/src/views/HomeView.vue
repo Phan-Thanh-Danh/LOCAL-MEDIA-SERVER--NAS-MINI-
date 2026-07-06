@@ -41,6 +41,10 @@
 
         <!-- Action Toolbar -->
         <div v-if="!selectedMedia" class="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
+          <button v-if="currentPath" @click="handleLockFolder" class="flex-1 lg:flex-none justify-center bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-medium transition flex items-center gap-2">
+            <span>🔒</span> <span class="hidden sm:inline">Lock Folder</span><span class="sm:hidden">Lock</span>
+          </button>
+
           <button @click="handleCreateFolder" class="flex-1 lg:flex-none justify-center bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-medium transition flex items-center gap-2">
             <span>➕📁</span> <span class="hidden sm:inline">New Folder</span><span class="sm:hidden">Folder</span>
           </button>
@@ -131,10 +135,19 @@
                 </td>
                 <td class="px-4 py-3 sm:px-6 sm:py-4 text-slate-400 hidden sm:table-cell">{{ item.sizeFormatted || '-' }}</td>
                 <td class="px-4 py-3 sm:px-6 sm:py-4 text-right">
-                  <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="sm:opacity-0 sm:group-hover:opacity-100 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ml-auto">
-                    ⬇ DL
-                  </button>
-                  <span v-else class="text-slate-600">-</span>
+                  <div class="flex items-center justify-end gap-2">
+                    <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="sm:opacity-0 sm:group-hover:opacity-100 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ml-auto">
+                      ⬇ DL
+                    </button>
+                    <template v-if="item.isDirectory">
+                      <button v-if="!item.isLocked" @click.stop="lockItem(item)" class="sm:opacity-0 sm:group-hover:opacity-100 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1">
+                        🔒 Khóa
+                      </button>
+                      <button v-else @click.stop="unlockItem(item)" class="sm:opacity-0 sm:group-hover:opacity-100 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1">
+                        🔓 Mở Khóa
+                      </button>
+                    </template>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -172,6 +185,14 @@
                 <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
               </svg>
             </button>
+            <template v-if="item.isDirectory">
+              <button v-if="!item.isLocked" @click.stop="lockItem(item)" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 bg-rose-500 hover:bg-rose-400 text-slate-950 p-2 rounded-full shadow-lg transition translate-y-2 group-hover:translate-y-0 text-xs flex items-center justify-center w-8 h-8" title="Khóa Thư Mục">
+                🔒
+              </button>
+              <button v-else @click.stop="unlockItem(item)" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 bg-amber-500 hover:bg-amber-400 text-slate-950 p-2 rounded-full shadow-lg transition translate-y-2 group-hover:translate-y-0 text-xs flex items-center justify-center w-8 h-8" title="Mở Khóa">
+                🔓
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -299,6 +320,7 @@ const fileInput = ref(null);
 const showUploadModal = ref(false);
 const isDragging = ref(false);
 const uploadProgress = ref(0);
+const unlockedPasswords = ref({});
 
 // New UI State
 const viewMode = ref('table'); // table | card
@@ -409,22 +431,30 @@ async function loadItems() {
   const path = currentPath.value;
   try {
     const base = import.meta.env.VITE_API_BASE || '';
-    const response = await axios.get(`${base}/api/files`, { params: { path } });
+    const password = unlockedPasswords.value[path] || '';
+    const response = await axios.get(`${base}/api/files`, { params: { path, password } });
     items.value = response.data;
   } catch (error) {
+    if (error.response?.status === 401 && error.response?.data === 'LOCKED') {
+      loading.value = false;
+      const pwd = prompt("Thư mục này đã bị khóa. Vui lòng nhập mật khẩu:");
+      if (pwd) {
+        unlockedPasswords.value[path] = pwd;
+        return loadItems();
+      } else {
+        goBack();
+        return;
+      }
+    }
     console.error("Lỗi khi load danh sách file:", error);
-    console.error("Message:", error.message);
-    console.error("Code:", error.code);
-    console.error("Status:", error.response?.status);
-    console.error("Data:", error.response?.data);
-    alert("Không thể kết nối Backend. Kiểm tra backend port 5000 hoặc chạy file BAT.");
+    alert("Lỗi tải file. Kiểm tra backend hoặc mật khẩu.");
   } finally {
     loading.value = false;
   }
 }
 
 function getIcon(item) {
-  if (item.isDirectory) return '📁';
+  if (item.isDirectory) return item.isLocked ? '🔒' : '📁';
   if (isVideo(item)) return '🎬';
   if (isImage(item)) return '🖼️';
   return '📄';
@@ -527,6 +557,64 @@ function goHome() {
 
 function refresh() {
   loadItems();
+}
+
+async function handleLockFolder() {
+  const pwd = prompt(`Nhập mật khẩu để khóa thư mục hiện tại:`);
+  if (!pwd) return;
+
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const response = await axios.post(`${base}/api/media/lock`, {
+      path: currentPath.value,
+      password: pwd
+    });
+    alert(response.data.message || "Đã khóa thư mục thành công!");
+    unlockedPasswords.value[currentPath.value] = pwd;
+    loadItems();
+  } catch (error) {
+    alert("Lỗi khi khóa thư mục: " + (error.response?.data || error.message));
+  }
+}
+
+async function lockItem(item) {
+  const pwd = prompt(`Nhập mật khẩu để khóa thư mục "${item.name}":`);
+  if (!pwd) return;
+
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const response = await axios.post(`${base}/api/media/lock`, {
+      path: item.relativePath,
+      password: pwd
+    });
+    alert(response.data.message || "Đã khóa thư mục thành công!");
+    unlockedPasswords.value[item.relativePath] = pwd;
+    loadItems();
+  } catch (error) {
+    alert("Lỗi khi khóa thư mục: " + (error.response?.data || error.message));
+  }
+}
+
+async function unlockItem(item) {
+  const pwd = prompt(`Nhập mật khẩu để gỡ khóa thư mục "${item.name}":`);
+  if (!pwd) return;
+
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const response = await axios.post(`${base}/api/media/unlock`, {
+      path: item.relativePath,
+      password: pwd
+    });
+    alert(response.data.message || "Đã gỡ khóa thư mục thành công!");
+    delete unlockedPasswords.value[item.relativePath];
+    loadItems();
+  } catch (error) {
+    if (error.response?.status === 403) {
+      alert("Mật khẩu không đúng!");
+    } else {
+      alert("Lỗi khi gỡ khóa thư mục: " + (error.response?.data || error.message));
+    }
+  }
 }
 
 async function handleCreateFolder() {
