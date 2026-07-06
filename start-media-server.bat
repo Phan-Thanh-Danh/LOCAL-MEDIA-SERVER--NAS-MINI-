@@ -22,7 +22,7 @@ set "LANIP=!LANIP: =!"
 if "!LANIP!"=="" set "LANIP=localhost"
 
 echo [1/2] Starting Backend ^(ASP.NET Core^)...
-start "Local Media Server Backend" /min cmd /k "cd /d ""%~dp0backend\LocalMediaServer"" && dotnet run --no-build --urls http://0.0.0.0:5000"
+start "Local Media Server Backend" /min cmd /k "cd /d ""%~dp0backend\LocalMediaServer"" && dotnet run --urls http://0.0.0.0:5000"
 
 echo Waiting for backend...
 timeout /t 3 /nobreak >nul

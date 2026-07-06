@@ -283,10 +283,12 @@ async function handleUploadFile(event) {
       alert("Tải file lên thành công!");
       loadItems();
     } else {
-      alert("Tải file thất bại.");
+      const errText = await response.text();
+      alert(`Tải file thất bại (Lỗi ${response.status}): ${errText}`);
     }
   } catch (error) {
-    alert("Có lỗi xảy ra trong quá trình upload.");
+    console.error(error);
+    alert("Có lỗi xảy ra trong quá trình upload: " + error.message);
   } finally {
     event.target.value = '';
   }
