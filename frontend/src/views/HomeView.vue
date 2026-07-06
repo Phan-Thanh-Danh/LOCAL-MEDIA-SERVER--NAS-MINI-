@@ -45,10 +45,9 @@
             <span>➕📁</span> <span class="hidden sm:inline">New Folder</span><span class="sm:hidden">Folder</span>
           </button>
           
-          <button @click="triggerFileInput" class="flex-1 lg:flex-none justify-center bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-medium transition flex items-center gap-2">
+          <button @click="showUploadModal = true" class="flex-1 lg:flex-none justify-center bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base font-medium transition flex items-center gap-2">
             <span>📤</span> <span class="hidden sm:inline">Upload File</span><span class="sm:hidden">Upload</span>
           </button>
-          <input type="file" ref="fileInput" @change="handleUploadFile" class="hidden" accept="video/*,image/*" />
         </div>
       </div>
 
@@ -239,6 +238,44 @@
         </div>
       </div>
 
+      <!-- Upload Modal -->
+      <div v-if="showUploadModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center p-4" 
+           @click.self="showUploadModal = false"
+           @dragover.prevent
+           @dragenter.prevent
+           @drop.prevent="isDragging = false">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl p-6 flex flex-col relative"
+             @dragover.prevent="isDragging = true"
+             @dragenter.prevent="isDragging = true"
+             @dragleave.prevent="isDragging = false"
+             @drop.prevent.stop="handleDrop">
+             
+          <button @click="showUploadModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+            ✖
+          </button>
+          
+          <h2 class="text-xl font-bold text-white mb-6 text-center">Upload File</h2>
+          
+          <div :class="['border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center transition-colors cursor-pointer', isDragging ? 'border-sky-500 bg-sky-500/10' : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50']" @click="triggerFileInput">
+            <span class="text-5xl mb-4 opacity-70" :class="{'animate-bounce': isDragging}">☁️</span>
+            <p class="text-slate-300 font-medium mb-1">{{ isDragging ? 'Drop file to upload' : 'Click to browse or drag file here' }}</p>
+            <p class="text-slate-500 text-sm">Supported files: Images, Videos</p>
+          </div>
+          
+          <input type="file" ref="fileInput" @change="handleUploadFile" class="hidden" accept="video/*,image/*" />
+          
+          <div v-if="uploadProgress > 0" class="mt-6 w-full">
+            <div class="flex justify-between text-xs text-slate-400 mb-1">
+              <span>Uploading...</span>
+              <span>{{ uploadProgress }}%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2">
+              <div class="bg-sky-500 h-2 rounded-full transition-all duration-300" :style="{ width: `${uploadProgress}%` }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -259,6 +296,9 @@ const videoRef = ref(null);
 const imageScale = ref(1);
 const isMuted = ref(false);
 const fileInput = ref(null);
+const showUploadModal = ref(false);
+const isDragging = ref(false);
+const uploadProgress = ref(0);
 
 // New UI State
 const viewMode = ref('table'); // table | card
@@ -520,34 +560,49 @@ function triggerFileInput() {
   fileInput.value.click();
 }
 
+function handleDrop(event) {
+  isDragging.value = false;
+  const files = event.dataTransfer.files;
+  if (files.length > 0) {
+    uploadFile(files[0]);
+  }
+}
+
 async function handleUploadFile(event) {
   const files = event.target.files;
   if (files.length === 0) return;
+  await uploadFile(files[0]);
+}
 
+async function uploadFile(file) {
   const formData = new FormData();
-  formData.append("file", files[0]);
+  formData.append("file", file);
   formData.append("subPath", currentPath.value);
 
+  uploadProgress.value = 1;
+
   try {
-    console.log("Đang tải file lên...");
     const base = import.meta.env.VITE_API_BASE || '';
-    const response = await fetch(`${base}/api/media/upload`, {
-      method: 'POST',
-      body: formData
+    
+    await axios.post(`${base}/api/media/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        uploadProgress.value = percentCompleted;
+      }
     });
 
-    if (response.ok) {
-      alert("Tải file lên thành công!");
-      loadItems();
-    } else {
-      const errText = await response.text();
-      alert(`Tải file thất bại (Lỗi ${response.status}): ${errText}`);
-    }
+    alert("Tải file lên thành công!");
+    loadItems();
+    showUploadModal.value = false;
   } catch (error) {
     console.error(error);
-    alert("Có lỗi xảy ra trong quá trình upload: " + error.message);
+    alert("Có lỗi xảy ra trong quá trình upload: " + (error.response?.data || error.message));
   } finally {
-    event.target.value = '';
+    uploadProgress.value = 0;
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
   }
 }
 

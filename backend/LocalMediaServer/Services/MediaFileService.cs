@@ -35,6 +35,11 @@ public class MediaFileService : IMediaFileService
         {
             try
             {
+                var attributes = File.GetAttributes(path);
+                if (attributes.HasFlag(FileAttributes.Hidden) || attributes.HasFlag(FileAttributes.System))
+                {
+                    continue;
+                }
                 entries.Add(CreateItem(path));
             }
             catch (Exception)
