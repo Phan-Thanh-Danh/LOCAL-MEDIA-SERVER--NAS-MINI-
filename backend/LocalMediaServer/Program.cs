@@ -51,7 +51,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) && 
-                    (path.StartsWithSegments("/hubs/media") || path.StartsWithSegments("/api/media/video") || path.StartsWithSegments("/api/media/image")))
+                    (path.StartsWithSegments("/hubs/media") || path.StartsWithSegments("/api/media/video") || path.StartsWithSegments("/api/media/image") || path.StartsWithSegments("/api/media/thumbnail")))
                 {
                     context.Token = accessToken;
                 }
@@ -64,6 +64,7 @@ builder.Services.AddAuthorization();
 builder.Services.Configure<MediaServerOptions>(builder.Configuration.GetSection(MediaServerOptions.SectionName));
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<FolderSecurityService>();
+builder.Services.AddSingleton<ThumbnailService>();
 builder.Services.AddSingleton<IMediaFileService, MediaFileService>();
 builder.Services.AddSingleton<FileWatcherService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<FileWatcherService>());

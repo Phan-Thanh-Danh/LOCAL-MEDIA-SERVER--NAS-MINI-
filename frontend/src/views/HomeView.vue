@@ -169,7 +169,19 @@
           <div v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-sky-500/50 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-sky-900/20 transition cursor-pointer flex flex-col group relative overflow-hidden">
             
             <div class="flex justify-between items-start mb-4">
-              <div class="text-5xl drop-shadow-md">{{ getIcon(item) }}</div>
+              <!-- Video Thumbnail Preview -->
+              <div v-if="isVideo(item)" class="w-full aspect-video mb-3 rounded-xl overflow-hidden bg-slate-800/50 flex items-center justify-center relative">
+                <img :src="getThumbnailUrl(item)" @error="$event.target.style.display='none'; $event.target.nextSibling.style.display='block'" class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy">
+                <span class="text-4xl absolute group-hover:scale-110 transition-transform drop-shadow-lg" style="display: none">🎬</span>
+                <!-- Play Overlay -->
+                <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <div class="w-10 h-10 rounded-full bg-sky-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:scale-110 shadow-lg backdrop-blur-sm">
+                    <svg class="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"/></svg>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-5xl drop-shadow-md">{{ getIcon(item) }}</div>
+
               <div v-if="item.isDirectory" class="bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Folder</div>
               <div v-else-if="isVideo(item)" class="bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Video</div>
               <div v-else-if="isImage(item)" class="bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Image</div>
@@ -255,6 +267,8 @@
               playsinline
               preload="metadata"
               :src="getMediaUrl(selectedMedia)"
+              @timeupdate="onVideoTimeUpdate"
+              @loadedmetadata="onVideoLoaded"
               class="max-w-full max-h-[75vh] rounded-lg shadow-2xl"
             ></video>
 
@@ -480,21 +494,80 @@ function isImage(item) {
 
 function openItem(item) {
   if (item.isDirectory) {
-    const nextPath = item.relativePath;
-    history.value.push(currentPath.value);
-    router.push({ query: { path: nextPath } });
-    selectedMedia.value = null;
-    imageScale.value = 1;
-    return;
+    navigateTo(item.relativePath);
+  } else {
+    selectMedia(item);
   }
+}
 
-  selectMedia(item);
+let lastSavedTime = 0;
+let isSeeking = false;
+
+async function checkHistoryAndPlay(path) {
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    const res = await axios.get(`${base}/api/history`, {
+      params: { path },
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const stoppedAt = res.data.stoppedAt;
+    
+    if (stoppedAt > 10) { // Only resume if watched more than 10 seconds
+      if (confirm(`Bạn đang xem dở ở phút ${Math.floor(stoppedAt / 60)}:${Math.floor(stoppedAt % 60).toString().padStart(2, '0')}. Phát tiếp?`)) {
+        isSeeking = true;
+        // Wait for video ref
+        setTimeout(() => {
+          if (videoRef.value) {
+            videoRef.value.currentTime = stoppedAt;
+            videoRef.value.play().catch(e => console.log('Autoplay blocked', e));
+          }
+          isSeeking = false;
+        }, 500);
+      }
+    }
+  } catch (err) {
+    console.error("Lỗi lấy lịch sử:", err);
+  }
+}
+
+async function onVideoTimeUpdate(e) {
+  if (isSeeking) return;
+  const time = e.target.currentTime;
+  
+  // Save history every 5 seconds
+  if (Math.abs(time - lastSavedTime) > 5) {
+    lastSavedTime = time;
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    if (!selectedMedia.value) return;
+    
+    try {
+      await axios.post(`${base}/api/history`, {
+        path: selectedMedia.value.relativePath,
+        stoppedAt: time
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error("Lỗi lưu lịch sử:", err);
+    }
+  }
+}
+
+function onVideoLoaded(e) {
+  if (!isSeeking && e.target) {
+    e.target.play().catch(e => console.log('Autoplay blocked', e));
+  }
 }
 
 function selectMedia(item) {
   selectedMedia.value = item;
   imageScale.value = 1;
   isMuted.value = false;
+  if (isVideo(item)) {
+    checkHistoryAndPlay(item.relativePath);
+  }
 }
 
 function showPreviousMedia() {
@@ -512,9 +585,13 @@ function showNextMedia() {
 }
 
 function closeViewer() {
+  if (videoRef.value) {
+    videoRef.value.pause();
+  }
   selectedMedia.value = null;
   imageScale.value = 1;
   isMuted.value = false;
+  lastSavedTime = 0;
 }
 
 function zoomIn() {
@@ -716,6 +793,13 @@ function getImageUrl(item) {
   const token = localStorage.getItem('jwt_token') || '';
   const path = item.relativePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
   return `${base}/api/media/image/${path}?access_token=${token}`;
+}
+
+function getThumbnailUrl(item) {
+  const base = import.meta.env.VITE_API_BASE || '';
+  const token = localStorage.getItem('jwt_token') || '';
+  const path = item.relativePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return `${base}/api/media/thumbnail/${path}?access_token=${token}`;
 }
 
 function logout() {

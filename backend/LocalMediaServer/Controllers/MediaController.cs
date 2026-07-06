@@ -10,12 +10,32 @@ namespace LocalMediaServer.Controllers;
 public class MediaController : ControllerBase
 {
     private readonly IMediaFileService _mediaFileService;
+    private readonly ThumbnailService _thumbnailService;
     private readonly FolderSecurityService _securityService;
 
-    public MediaController(IMediaFileService mediaFileService, FolderSecurityService securityService)
+    public MediaController(IMediaFileService mediaFileService, ThumbnailService thumbnailService, FolderSecurityService securityService)
     {
         _mediaFileService = mediaFileService;
+        _thumbnailService = thumbnailService;
         _securityService = securityService;
+    }
+
+    [HttpGet("thumbnail/{*relativePath}")]
+    public async Task<IActionResult> GetThumbnail(string relativePath)
+    {
+        var absolutePath = _mediaFileService.GetAbsolutePath(relativePath);
+        if (!System.IO.File.Exists(absolutePath))
+        {
+            return NotFound("File not found");
+        }
+
+        var thumbnailPath = await _thumbnailService.GetThumbnailAsync(absolutePath);
+        if (string.IsNullOrEmpty(thumbnailPath) || !System.IO.File.Exists(thumbnailPath))
+        {
+            return NotFound("Could not generate thumbnail");
+        }
+
+        return PhysicalFile(thumbnailPath, "image/jpeg", enableRangeProcessing: true);
     }
 
     [HttpGet("video/{*path}")]
