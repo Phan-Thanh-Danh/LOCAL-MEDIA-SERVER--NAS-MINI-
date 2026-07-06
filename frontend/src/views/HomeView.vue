@@ -121,9 +121,16 @@ const breadcrumbs = computed(() => {
 async function loadItems() {
   loading.value = true;
   const path = currentPath.value;
-  const response = await axios.get('/api/files', { params: { path } });
-  items.value = response.data;
-  loading.value = false;
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const response = await axios.get(`${base}/api/files`, { params: { path } });
+    items.value = response.data;
+  } catch (error) {
+    console.error("Lỗi khi load danh sách file:", error);
+    alert("Không thể kết nối tới Backend. Hãy kiểm tra xem Backend đã chạy chưa.");
+  } finally {
+    loading.value = false;
+  }
 }
 
 function getIcon(item) {
