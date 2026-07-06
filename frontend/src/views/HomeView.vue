@@ -32,6 +32,7 @@
             <th>Date modified</th>
             <th>Type</th>
             <th>Size</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -40,6 +41,16 @@
             <td>{{ formatDate(item.lastModified) }}</td>
             <td>{{ item.type }}</td>
             <td>{{ item.sizeFormatted || '' }}</td>
+            <td>
+              <button
+                v-if="!item.isDirectory"
+                class="download-btn"
+                @click.stop="downloadFile(item)"
+              >
+                ⬇ Download
+              </button>
+              <span v-else>-</span>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -318,6 +329,25 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
+function downloadFile(item) {
+  if (!item || item.isDirectory) return;
+
+  const base = import.meta.env.VITE_API_BASE || '';
+  const path = item.relativePath
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+
+  const url = `${base}/api/media/download/${path}`;
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = item.name || 'download';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 watch(currentPath, () => {
   loadItems();
   selectedMedia.value = null;
@@ -386,6 +416,16 @@ button {
 
 button:hover {
   background: #0056b3;
+}
+
+.download-btn {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  background: #28a745;
+}
+.download-btn:hover {
+  background: #218838;
 }
 
 .viewer-overlay {

@@ -26,6 +26,35 @@ public class MediaController : ControllerBase
         return await StreamMedia(path, isVideo: false);
     }
 
+    [HttpGet("download/{*path}")]
+    public IActionResult DownloadFile(string path)
+    {
+        try
+        {
+            var fullPath = _mediaFileService.GetAbsolutePath(path);
+            var fileInfo = new FileInfo(fullPath);
+
+            if (!fileInfo.Exists)
+                return NotFound("File không tồn tại.");
+
+            if ((fileInfo.Attributes & FileAttributes.Directory) == FileAttributes.Directory)
+                return BadRequest("Không thể download thư mục.");
+
+            var mimeType = _mediaFileService.GetMimeType(Path.GetExtension(fullPath));
+            var stream = _mediaFileService.OpenReadStream(path);
+
+            return File(stream, mimeType, fileDownloadName: fileInfo.Name, enableRangeProcessing: true);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return StatusCode(403, "Đường dẫn không hợp lệ.");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Lỗi khi tải file: {ex.Message}");
+        }
+    }
+
     private async Task<IActionResult> StreamMedia(string path, bool isVideo)
     {
         try
