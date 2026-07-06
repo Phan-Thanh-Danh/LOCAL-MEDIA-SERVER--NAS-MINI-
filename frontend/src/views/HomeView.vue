@@ -1,92 +1,244 @@
 <template>
-  <div class="container">
-    <div class="toolbar">
-      <button @click="goBack">Back</button>
-      <button @click="goHome">Home</button>
-      <button @click="refresh">Refresh</button>
-    </div>
-
-    <div class="breadcrumb">
-      <button v-for="(segment, index) in breadcrumbs" :key="index" @click="navigateTo(segment.path)">
-        {{ segment.name }}
-      </button>
-    </div>
-
-    <div class="action-toolbar" v-if="!selectedMedia">
-      <button @click="handleCreateFolder" class="toolbar-btn text-yellow">
-        <span>➕📁</span> New Folder
-      </button>
+  <div class="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6">
       
-      <button @click="triggerFileInput" class="toolbar-btn text-blue">
-        <span>📤</span> Upload File
-      </button>
-      <input type="file" ref="fileInput" @change="handleUploadFile" style="display: none;" accept="video/*,image/*" />
-    </div>
+      <!-- Header -->
+      <header class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl p-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            Local Media Server
+            <span class="px-2 py-1 bg-sky-500/20 text-sky-400 text-xs font-semibold rounded-md uppercase tracking-wider">LAN Storage</span>
+          </h1>
+          <p class="text-slate-400 text-sm mt-1">NAS Mini File Explorer</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button @click="refresh" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
+            <span>🔄</span> Refresh
+          </button>
+        </div>
+      </header>
 
-    <div v-if="loading">Loading...</div>
-    <div v-else>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Date modified</th>
-            <th>Type</th>
-            <th>Size</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in items" :key="item.relativePath" @click="openItem(item)">
-            <td>{{ getIcon(item) }} {{ item.name }}</td>
-            <td>{{ formatDate(item.lastModified) }}</td>
-            <td>{{ item.type }}</td>
-            <td>{{ item.sizeFormatted || '' }}</td>
-            <td>
-              <button
-                v-if="!item.isDirectory"
-                class="download-btn"
-                @click.stop="downloadFile(item)"
-              >
-                ⬇ Download
-              </button>
-              <span v-else>-</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div v-if="selectedMedia" class="viewer-overlay" @click.self="closeViewer">
-      <div class="viewer">
-        <div class="viewer-toolbar">
-          <button v-if="mediaNavigationAvailable" @click="showPreviousMedia">← Prev</button>
-          <button v-if="mediaNavigationAvailable" @click="showNextMedia">Next →</button>
-          <button v-if="isImage(selectedMedia)" @click="zoomOut">−</button>
-          <button v-if="isImage(selectedMedia)" @click="resetZoom">100%</button>
-          <button v-if="isImage(selectedMedia)" @click="zoomIn">+</button>
-          <button v-if="isVideo(selectedMedia)" @click="toggleMute">{{ isMuted ? 'Unmute' : 'Mute' }}</button>
-          <button v-if="isVideo(selectedMedia)" @click="setPlaybackRate(1)">1x</button>
-          <button v-if="isVideo(selectedMedia)" @click="setPlaybackRate(1.5)">1.5x</button>
-          <button v-if="isVideo(selectedMedia)" @click="setPlaybackRate(2)">2x</button>
-          <button @click="closeViewer">Close</button>
+      <!-- Navigation & Actions -->
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <!-- Breadcrumb & Nav -->
+        <div class="flex items-center gap-2 flex-wrap bg-slate-900 border border-slate-800 rounded-xl px-4 py-2">
+          <button @click="goHome" class="text-slate-400 hover:text-white px-2 py-1 rounded transition">🏠 Home</button>
+          <span class="text-slate-600">/</span>
+          <button @click="goBack" class="text-slate-400 hover:text-white px-2 py-1 rounded transition" :disabled="!history.length" :class="{'opacity-50 cursor-not-allowed': !history.length}">🔙 Back</button>
+          
+          <template v-if="breadcrumbs.length > 0">
+            <span class="text-slate-600 ml-2">|</span>
+            <div class="flex items-center gap-1 ml-2 flex-wrap">
+              <template v-for="(segment, index) in breadcrumbs" :key="index">
+                <button @click="navigateTo(segment.path)" class="text-sky-400 hover:text-sky-300 font-medium transition">
+                  {{ segment.name }}
+                </button>
+                <span v-if="index < breadcrumbs.length - 1" class="text-slate-600">/</span>
+              </template>
+            </div>
+          </template>
         </div>
 
-        <video
-          v-if="isVideo(selectedMedia)"
-          ref="videoRef"
-          controls
-          playsinline
-          preload="metadata"
-          :src="mediaUrl(selectedMedia)"
-        ></video>
-
-        <img
-          v-else-if="isImage(selectedMedia)"
-          :src="mediaUrl(selectedMedia)"
-          :style="{ transform: `scale(${imageScale})` }"
-          @wheel.prevent="handleImageWheel"
-        />
+        <!-- Action Toolbar -->
+        <div v-if="!selectedMedia" class="flex flex-wrap items-center gap-3">
+          <button @click="handleCreateFolder" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
+            <span>➕📁</span> New Folder
+          </button>
+          
+          <button @click="triggerFileInput" class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-4 py-2 rounded-xl font-medium transition flex items-center gap-2">
+            <span>📤</span> Upload File
+          </button>
+          <input type="file" ref="fileInput" @change="handleUploadFile" class="hidden" accept="video/*,image/*" />
+        </div>
       </div>
+
+      <!-- Filter/Search Toolbar -->
+      <div v-if="!selectedMedia" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 items-center">
+        <div class="xl:col-span-2 relative">
+          <span class="absolute inset-y-0 left-3 flex items-center text-slate-500">🔍</span>
+          <input v-model="searchQuery" type="text" placeholder="Search files..." class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition" />
+        </div>
+        
+        <div>
+          <select v-model="fileTypeFilter" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 transition">
+            <option value="all">All Types</option>
+            <option value="folder">Folders</option>
+            <option value="video">Videos</option>
+            <option value="image">Images</option>
+            <option value="other">Other Files</option>
+          </select>
+        </div>
+        
+        <div>
+          <select v-model="sortField" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 transition">
+            <option value="name">Sort by Name</option>
+            <option value="lastModified">Sort by Date</option>
+            <option value="size">Sort by Size</option>
+            <option value="type">Sort by Type</option>
+          </select>
+        </div>
+
+        <div class="flex gap-2">
+          <button @click="toggleSortDirection" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 transition flex items-center justify-center gap-1">
+            {{ sortDirection === 'asc' ? '🔼 Asc' : '🔽 Desc' }}
+          </button>
+          
+          <button @click="toggleViewMode" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 transition flex items-center justify-center gap-1" title="Toggle View">
+            {{ viewMode === 'table' ? '🗂️ Card' : '📄 Table' }}
+          </button>
+        </div>
+        
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-sm text-slate-400">{{ resultCount }} item(s)</span>
+          <button v-if="searchQuery || fileTypeFilter !== 'all'" @click="clearFilters" class="text-xs text-rose-400 hover:text-rose-300 underline">Clear</button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20 bg-slate-900 border border-slate-800 rounded-2xl">
+        <div class="animate-spin text-4xl mb-4">⏳</div>
+        <p class="text-slate-400 font-medium animate-pulse">Loading files...</p>
+      </div>
+      
+      <div v-else-if="resultCount === 0" class="flex flex-col items-center justify-center py-20 bg-slate-900 border border-slate-800 rounded-2xl">
+        <div class="text-5xl mb-4 opacity-50">📂</div>
+        <h3 class="text-xl font-medium text-slate-300 mb-2">No files found</h3>
+        <p class="text-slate-500 text-sm mb-4">Try adjusting your search or filter criteria.</p>
+        <button @click="clearFilters" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg transition">Clear Filters</button>
+      </div>
+
+      <div v-else>
+        <!-- Table View -->
+        <div v-if="viewMode === 'table'" class="overflow-hidden overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-lg">
+          <table class="w-full text-sm text-left whitespace-nowrap">
+            <thead class="bg-slate-800/80 text-slate-400 uppercase text-xs tracking-wider">
+              <tr>
+                <th class="px-6 py-4 font-medium">Name</th>
+                <th class="px-6 py-4 font-medium">Date modified</th>
+                <th class="px-6 py-4 font-medium">Type</th>
+                <th class="px-6 py-4 font-medium">Size</th>
+                <th class="px-6 py-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/50">
+              <tr v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="hover:bg-slate-800/60 transition cursor-pointer group">
+                <td class="px-6 py-4 flex items-center gap-3">
+                  <span class="text-2xl">{{ getIcon(item) }}</span>
+                  <span class="font-medium text-slate-200 truncate max-w-[200px] md:max-w-md lg:max-w-lg">{{ item.name }}</span>
+                </td>
+                <td class="px-6 py-4 text-slate-400">{{ formatDate(item.lastModified) }}</td>
+                <td class="px-6 py-4">
+                  <span class="px-2 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300">{{ item.type }}</span>
+                </td>
+                <td class="px-6 py-4 text-slate-400">{{ item.sizeFormatted || '-' }}</td>
+                <td class="px-6 py-4 text-right">
+                  <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="opacity-0 group-hover:opacity-100 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ml-auto">
+                    ⬇ DL
+                  </button>
+                  <span v-else class="text-slate-600">-</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Card View -->
+        <div v-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-sky-500/50 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-sky-900/20 transition cursor-pointer flex flex-col group relative overflow-hidden">
+            
+            <div class="flex justify-between items-start mb-4">
+              <div class="text-5xl drop-shadow-md">{{ getIcon(item) }}</div>
+              <div v-if="item.isDirectory" class="bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Folder</div>
+              <div v-else-if="isVideo(item)" class="bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Video</div>
+              <div v-else-if="isImage(item)" class="bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Image</div>
+              <div v-else class="bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">File</div>
+            </div>
+            
+            <h3 class="font-semibold text-slate-100 text-lg mb-1 truncate" :title="item.name">{{ item.name }}</h3>
+            
+            <div class="flex flex-col gap-1 mt-auto pt-4 border-t border-slate-800/50">
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>Date:</span>
+                <span>{{ formatDate(item.lastModified).split(',')[0] }}</span>
+              </div>
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>Size:</span>
+                <span>{{ item.sizeFormatted || '-' }}</span>
+              </div>
+            </div>
+            
+            <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 bg-emerald-500 hover:bg-emerald-400 text-slate-950 p-2 rounded-full shadow-lg transition translate-y-2 group-hover:translate-y-0" title="Download">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewer Overlay -->
+      <div v-if="selectedMedia" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4 md:p-8" @click.self="closeViewer">
+        <div class="w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          
+          <!-- Viewer Toolbar -->
+          <div class="bg-slate-950/50 p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 truncate">
+              <span class="text-2xl">{{ getIcon(selectedMedia) }}</span>
+              <h2 class="text-white font-medium truncate max-w-[200px] sm:max-w-xs md:max-w-md">{{ selectedMedia.name }}</h2>
+            </div>
+            
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+              <template v-if="mediaNavigationAvailable">
+                <button @click="showPreviousMedia" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">← Prev</button>
+                <button @click="showNextMedia" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">Next →</button>
+              </template>
+              
+              <div class="w-px h-6 bg-slate-700 mx-1"></div>
+              
+              <template v-if="isImage(selectedMedia)">
+                <button @click="zoomOut" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">−</button>
+                <button @click="resetZoom" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">100%</button>
+                <button @click="zoomIn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">+</button>
+              </template>
+              
+              <template v-if="isVideo(selectedMedia)">
+                <button @click="toggleMute" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">{{ isMuted ? 'Unmute' : 'Mute' }}</button>
+                <button @click="setPlaybackRate(1)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">1x</button>
+                <button @click="setPlaybackRate(1.5)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">1.5x</button>
+                <button @click="setPlaybackRate(2)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition">2x</button>
+              </template>
+              
+              <div class="w-px h-6 bg-slate-700 mx-1"></div>
+              
+              <button @click="downloadFile(selectedMedia)" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">DL</button>
+              <button @click="closeViewer" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition ml-1">Close</button>
+            </div>
+          </div>
+          
+          <!-- Media Content -->
+          <div class="flex-1 overflow-auto bg-black/50 p-4 flex items-center justify-center min-h-[50vh]">
+            <video
+              v-if="isVideo(selectedMedia)"
+              ref="videoRef"
+              controls
+              playsinline
+              preload="metadata"
+              :src="mediaUrl(selectedMedia)"
+              class="max-w-full max-h-[75vh] rounded-lg shadow-2xl"
+            ></video>
+
+            <img
+              v-else-if="isImage(selectedMedia)"
+              :src="mediaUrl(selectedMedia)"
+              :style="{ transform: `scale(${imageScale})` }"
+              @wheel.prevent="handleImageWheel"
+              class="max-w-full max-h-[75vh] object-contain transition-transform duration-200 rounded-lg shadow-2xl origin-center"
+            />
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -108,6 +260,13 @@ const imageScale = ref(1);
 const isMuted = ref(false);
 const fileInput = ref(null);
 
+// New UI State
+const viewMode = ref('table'); // table | card
+const searchQuery = ref('');
+const fileTypeFilter = ref('all'); // all | folder | video | image | other
+const sortField = ref('name'); // name | lastModified | size | type
+const sortDirection = ref('asc'); // asc | desc
+
 const currentPath = computed(() => {
   const value = route.query.path;
   return Array.isArray(value) ? value[0] || '' : value || '';
@@ -128,6 +287,82 @@ const breadcrumbs = computed(() => {
   }
   return result;
 });
+
+const filteredAndSortedItems = computed(() => {
+  let result = [...items.value];
+
+  // 1. Search
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(item => item.name.toLowerCase().includes(query));
+  }
+
+  // 2. Filter by type
+  if (fileTypeFilter.value !== 'all') {
+    result = result.filter(item => {
+      if (fileTypeFilter.value === 'folder') return item.isDirectory;
+      if (fileTypeFilter.value === 'video') return !item.isDirectory && isVideo(item);
+      if (fileTypeFilter.value === 'image') return !item.isDirectory && isImage(item);
+      if (fileTypeFilter.value === 'other') return !item.isDirectory && !isVideo(item) && !isImage(item);
+      return true;
+    });
+  }
+
+  // 3. Sort
+  result.sort((a, b) => {
+    // Folders always on top when sorting by name or type
+    if ((sortField.value === 'name' || sortField.value === 'type') && a.isDirectory !== b.isDirectory) {
+      return a.isDirectory ? -1 : 1;
+    }
+
+    let valA, valB;
+
+    switch (sortField.value) {
+      case 'name':
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+        break;
+      case 'lastModified':
+        valA = new Date(a.lastModified).getTime();
+        valB = new Date(b.lastModified).getTime();
+        break;
+      case 'size':
+        valA = a.size || 0;
+        valB = b.size || 0;
+        break;
+      case 'type':
+        valA = a.type.toLowerCase();
+        valB = b.type.toLowerCase();
+        break;
+      default:
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+    }
+
+    let comparison = 0;
+    if (valA < valB) comparison = -1;
+    if (valA > valB) comparison = 1;
+
+    return sortDirection.value === 'asc' ? comparison : -comparison;
+  });
+
+  return result;
+});
+
+const resultCount = computed(() => filteredAndSortedItems.value.length);
+
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'table' ? 'card' : 'table';
+}
+
+function toggleSortDirection() {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+}
+
+function clearFilters() {
+  searchQuery.value = '';
+  fileTypeFilter.value = 'all';
+}
 
 async function loadItems() {
   loading.value = true;
@@ -360,137 +595,8 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 8px;
-  box-sizing: border-box;
-}
-
-.toolbar,
-.viewer-toolbar {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.action-toolbar {
-  display: flex;
-  gap: 15px;
-  background-color: #202020;
-  border: 1px solid #333;
-  padding: 8px 15px;
-  border-radius: 6px;
-  margin-bottom: 15px;
-}
-.toolbar-btn {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-.toolbar-btn:hover {
-  background-color: #2d2d2d;
-}
-.text-yellow { color: #ffca28; }
-.text-blue { color: #42a5f5; }
-
-button {
-  cursor: pointer;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 6px;
-  background: #007bff;
-  color: #fff;
-  font-weight: 500;
-}
-
-button:hover {
-  background: #0056b3;
-}
-
-.download-btn {
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 13px;
-  background: #28a745;
-}
-.download-btn:hover {
-  background: #218838;
-}
-
-.viewer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 16px;
-  z-index: 1000;
-}
-
-.viewer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #fafafa;
-  max-width: 95vw;
-  max-height: 95vh;
-  overflow: auto;
-}
-
-video {
-  width: 100%;
-  max-height: 70vh;
-  background: #000;
-}
-
-img {
-  max-width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
-  transition: transform 0.15s ease;
-  align-self: center;
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 6px;
-  }
-
-  .toolbar,
-  .viewer-toolbar {
-    gap: 6px;
-  }
-
-  button {
-    padding: 7px 8px;
-    font-size: 14px;
-  }
-
-  table {
-    font-size: 13px;
-  }
-
-  th, td {
-    padding: 6px;
-  }
-
-  .viewer {
-    padding: 8px;
-  }
+<style>
+body {
+  background-color: #020617; /* bg-slate-950 */
 }
 </style>
