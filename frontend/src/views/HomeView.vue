@@ -15,6 +15,9 @@
           <button @click="refresh" class="w-full md:w-auto bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-xl font-medium transition flex items-center justify-center gap-2">
             <span>🔄</span> Refresh
           </button>
+          <button @click="logout" class="w-full md:w-auto bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-4 py-2 rounded-xl font-medium transition flex items-center justify-center gap-2">
+            <span>Đăng xuất</span>
+          </button>
         </div>
       </header>
 
@@ -57,12 +60,17 @@
 
       <!-- Filter/Search Toolbar -->
       <div v-if="!selectedMedia" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 items-center">
-        <div class="xl:col-span-2 relative">
-          <span class="absolute inset-y-0 left-3 flex items-center text-slate-500">🔍</span>
-          <input v-model="searchQuery" type="text" placeholder="Search files..." class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition" />
+        <div class="xl:col-span-2 relative group flex-1 sm:flex-none">
+          <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+            🔍
+          </div>
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            class="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-slate-500"
+            placeholder="Tìm kiếm file..."
+          >
         </div>
-        
-        <div>
           <select v-model="fileTypeFilter" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 transition">
             <option value="all">All Types</option>
             <option value="folder">Folders</option>
@@ -70,7 +78,6 @@
             <option value="image">Images</option>
             <option value="other">Other Files</option>
           </select>
-        </div>
         
         <div>
           <select v-model="sortField" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 transition">
@@ -244,13 +251,13 @@
               controls
               playsinline
               preload="metadata"
-              :src="mediaUrl(selectedMedia)"
+              :src="getMediaUrl(selectedMedia)"
               class="max-w-full max-h-[75vh] rounded-lg shadow-2xl"
             ></video>
 
             <img
               v-else-if="isImage(selectedMedia)"
-              :src="mediaUrl(selectedMedia)"
+              :src="getImageUrl(selectedMedia)"
               :style="{ transform: `scale(${imageScale})` }"
               @wheel.prevent="handleImageWheel"
               class="max-w-full max-h-[75vh] object-contain transition-transform duration-200 rounded-lg shadow-2xl origin-center"
@@ -694,13 +701,24 @@ async function uploadFile(file) {
   }
 }
 
-function mediaUrl(item) {
+function getMediaUrl(item) {
   const base = import.meta.env.VITE_API_BASE || '';
-  const path = item.relativePath
-    .split('/')
-    .map(segment => encodeURIComponent(segment))
-    .join('/');
-  return isVideo(item) ? `${base}/api/media/video/${path}` : `${base}/api/media/image/${path}`;
+  const token = localStorage.getItem('jwt_token') || '';
+  const path = item.relativePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return `${base}/api/media/video/${path}?access_token=${token}`;
+}
+
+function getImageUrl(item) {
+  const base = import.meta.env.VITE_API_BASE || '';
+  const token = localStorage.getItem('jwt_token') || '';
+  const path = item.relativePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return `${base}/api/media/image/${path}?access_token=${token}`;
+}
+
+function logout() {
+  localStorage.removeItem('jwt_token');
+  localStorage.removeItem('user_role');
+  router.push('/login');
 }
 
 function formatDate(value) {

@@ -6,37 +6,20 @@ namespace LocalMediaServer.Services;
 
 public class FolderSecurityService
 {
-    private readonly string _connectionString;
+    private readonly DatabaseService _db;
     private readonly ConcurrentDictionary<string, string> _locksCache;
 
-    public FolderSecurityService()
+    public FolderSecurityService(DatabaseService db)
     {
-        var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "media_server.db");
-        _connectionString = $"Data Source={dbPath}";
+        _db = db;
         _locksCache = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         
-        InitializeDatabase();
         LoadLocksCache();
-    }
-
-    private void InitializeDatabase()
-    {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-
-        var command = connection.CreateCommand();
-        command.CommandText = @"
-            CREATE TABLE IF NOT EXISTS FolderLocks (
-                Path TEXT PRIMARY KEY,
-                PasswordHash TEXT NOT NULL
-            );
-        ";
-        command.ExecuteNonQuery();
     }
 
     private void LoadLocksCache()
     {
-        using var connection = new SqliteConnection(_connectionString);
+        using var connection = new SqliteConnection(_db.ConnectionString);
         connection.Open();
 
         var command = connection.CreateCommand();
@@ -53,7 +36,7 @@ public class FolderSecurityService
     {
         string hash = BCrypt.Net.BCrypt.EnhancedHashPassword(password, hashType: HashType.SHA256);
 
-        using var connection = new SqliteConnection(_connectionString);
+        using var connection = new SqliteConnection(_db.ConnectionString);
         connection.Open();
 
         var command = connection.CreateCommand();
@@ -73,7 +56,7 @@ public class FolderSecurityService
     {
         if (_locksCache.TryGetValue(absolutePath, out var savedHash) && BCrypt.Net.BCrypt.EnhancedVerify(password, savedHash, hashType: HashType.SHA256))
         {
-            using var connection = new SqliteConnection(_connectionString);
+            using var connection = new SqliteConnection(_db.ConnectionString);
             connection.Open();
 
             var command = connection.CreateCommand();

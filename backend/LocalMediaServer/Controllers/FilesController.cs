@@ -1,11 +1,13 @@
 using LocalMediaServer.DTOs;
 using LocalMediaServer.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LocalMediaServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class FilesController : ControllerBase
 {
     private readonly IMediaFileService _mediaFileService;
