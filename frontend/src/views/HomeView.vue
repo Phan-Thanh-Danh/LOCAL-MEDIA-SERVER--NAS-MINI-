@@ -12,6 +12,9 @@
           <p class="text-slate-400 text-xs sm:text-sm mt-1">NAS Mini File Explorer</p>
         </div>
         <div class="flex w-full md:w-auto gap-2">
+          <button @click="$router.push('/dashboard')" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-medium transition flex items-center justify-center gap-2">
+            <span>🎛️</span> Dashboard
+          </button>
           <button @click="refresh" class="w-full md:w-auto bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-xl font-medium transition flex items-center justify-center gap-2">
             <span>🔄</span> Refresh
           </button>
