@@ -86,7 +86,14 @@ public class ThumbnailService
             await _processLock.WaitAsync();
             try
             {
-                var conversion = await FFmpeg.Conversions.FromSnippet.Snapshot(videoAbsolutePath, thumbnailPath, ts);
+                var conversion = FFmpeg.Conversions.New()
+                    .AddParameter($"-ss {ts.TotalSeconds}")
+                    .AddParameter($"-i \"{videoAbsolutePath}\"")
+                    .AddParameter("-vframes 1")
+                    .AddParameter("-vf \"scale=480:-1\"")
+                    .AddParameter("-threads 1")
+                    .SetOutput(thumbnailPath);
+                    
                 await conversion.Start();
             }
             finally

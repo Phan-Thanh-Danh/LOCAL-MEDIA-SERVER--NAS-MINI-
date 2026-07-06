@@ -169,6 +169,13 @@ public class MediaController : ControllerBase
             await file.CopyToAsync(stream);
         }
 
+        // Tự động tạo Thumbnail ngay khi upload xong, chờ tạo xong mới báo thành công
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext == ".mp4" || ext == ".mkv" || ext == ".avi" || ext == ".mov")
+        {
+            await _thumbnailService.GetThumbnailAsync(filePath);
+        }
+
         return Ok(new { Message = "Tải file lên thành công!" });
     }
 
