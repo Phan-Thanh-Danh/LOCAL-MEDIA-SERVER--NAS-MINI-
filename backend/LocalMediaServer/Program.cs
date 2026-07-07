@@ -13,6 +13,7 @@ Directory.CreateDirectory(rootPath);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
+    .WriteTo.Console()
     .WriteTo.File("logs/local-media-server-.log", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
@@ -74,6 +75,7 @@ builder.Services.AddHostedService<SystemMonitorService>();
 var app = builder.Build();
 
 app.UseCors();
+app.UseSerilogRequestLogging();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

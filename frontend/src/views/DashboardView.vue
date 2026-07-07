@@ -120,8 +120,12 @@ async function fetchInitialStats() {
   }
 }
 
-async function fetchAuditLogs() {
-  auditLogsLoading.value = true;
+let auditLogsInterval = null;
+
+async function fetchAuditLogs(isPolling = false) {
+  if (!isPolling) {
+    auditLogsLoading.value = true;
+  }
   auditLogsError.value = '';
   try {
     const base = import.meta.env.VITE_API_BASE || '';
@@ -133,7 +137,9 @@ async function fetchAuditLogs() {
     auditLogsError.value = "Không thể lấy danh sách nhật ký.";
     console.error(err);
   } finally {
-    auditLogsLoading.value = false;
+    if (!isPolling) {
+      auditLogsLoading.value = false;
+    }
   }
 }
 
@@ -188,12 +194,16 @@ function setupSignalR() {
 onMounted(() => {
   fetchInitialStats();
   fetchAuditLogs();
+  auditLogsInterval = setInterval(() => fetchAuditLogs(true), 2000);
   setupSignalR();
 });
 
 onUnmounted(() => {
   if (hubConnection) {
     hubConnection.stop();
+  }
+  if (auditLogsInterval) {
+    clearInterval(auditLogsInterval);
   }
 });
 
