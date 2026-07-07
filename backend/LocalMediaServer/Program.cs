@@ -49,9 +49,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && 
-                    (path.StartsWithSegments("/hubs/media") || path.StartsWithSegments("/api/media/video") || path.StartsWithSegments("/api/media/image") || path.StartsWithSegments("/api/media/thumbnail")))
+                if (!string.IsNullOrEmpty(accessToken))
                 {
                     context.Token = accessToken;
                 }

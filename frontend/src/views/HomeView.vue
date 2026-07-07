@@ -320,6 +320,21 @@
               @wheel.prevent="handleImageWheel"
               class="max-w-full max-h-[75vh] object-contain transition-transform duration-200 rounded-lg shadow-2xl origin-center"
             />
+            
+            <iframe
+              v-else-if="isPdf(selectedMedia) || isCodeOrText(selectedMedia)"
+              :src="getGenericFileUrl(selectedMedia)"
+              class="w-full h-[75vh] rounded-lg shadow-2xl bg-white"
+            ></iframe>
+            
+            <div v-else class="text-center p-8 bg-slate-800 rounded-lg">
+              <div class="text-6xl mb-4">{{ getIcon(selectedMedia) }}</div>
+              <h3 class="text-xl font-medium text-white mb-2">{{ selectedMedia.name }}</h3>
+              <p class="text-slate-400 mb-6">Định dạng file này không hỗ trợ xem trực tiếp trên trình duyệt.</p>
+              <button @click="downloadFile(selectedMedia)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl font-medium transition">
+                Tải xuống file
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -400,7 +415,7 @@ const currentPath = computed(() => {
 });
 
 const mediaNavigationAvailable = computed(() => {
-  return items.value.some(item => !item.isDirectory && (isVideo(item) || isImage(item)));
+  return items.value.some(item => !item.isDirectory && (isVideo(item) || isImage(item) || isPdf(item) || isCodeOrText(item)));
 });
 
 const breadcrumbs = computed(() => {
@@ -543,6 +558,18 @@ function isImage(item) {
   return ['.jpg', '.jpeg', '.png', '.webp'].includes((item.extension || '').toLowerCase());
 }
 
+function isPdf(item) {
+  return (item.extension || '').toLowerCase() === '.pdf';
+}
+
+function isCodeOrText(item) {
+  return ['.txt', '.md', '.csv', '.cs', '.js', '.html', '.css', '.json', '.py', '.cpp', '.c', '.java'].includes((item.extension || '').toLowerCase());
+}
+
+function isDocument(item) {
+  return ['.doc', '.docx', '.xls', '.xlsx'].includes((item.extension || '').toLowerCase());
+}
+
 function openItem(item) {
   if (item.isDirectory) {
     navigateTo(item.relativePath);
@@ -635,7 +662,7 @@ function toggleSlideshow() {
 }
 
 function showPreviousMedia() {
-  const mediaItems = items.value.filter(item => !item.isDirectory && (isVideo(item) || isImage(item)));
+  const mediaItems = items.value.filter(item => !item.isDirectory && (isVideo(item) || isImage(item) || isPdf(item) || isCodeOrText(item)));
   const currentIndex = mediaItems.findIndex(item => item.relativePath === selectedMedia.value?.relativePath);
   if (currentIndex <= 0) {
     if (slideshowInterval.value) toggleSlideshow();
@@ -645,7 +672,7 @@ function showPreviousMedia() {
 }
 
 function showNextMedia() {
-  const mediaItems = items.value.filter(item => !item.isDirectory && (isVideo(item) || isImage(item)));
+  const mediaItems = items.value.filter(item => !item.isDirectory && (isVideo(item) || isImage(item) || isPdf(item) || isCodeOrText(item)));
   const currentIndex = mediaItems.findIndex(item => item.relativePath === selectedMedia.value?.relativePath);
   if (currentIndex === -1 || currentIndex >= mediaItems.length - 1) {
     if (slideshowInterval.value) toggleSlideshow();
@@ -864,6 +891,13 @@ function getImageUrl(item) {
   const token = localStorage.getItem('jwt_token') || '';
   const path = item.relativePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
   return `${base}/api/media/image/${path}?access_token=${token}`;
+}
+
+function getGenericFileUrl(item) {
+  const base = import.meta.env.VITE_API_BASE || '';
+  const token = localStorage.getItem('jwt_token') || '';
+  const path = item.relativePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return `${base}/api/media/file/${path}?access_token=${token}`;
 }
 
 function getThumbnailUrl(item) {

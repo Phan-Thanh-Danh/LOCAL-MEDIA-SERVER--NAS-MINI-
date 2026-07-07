@@ -94,6 +94,18 @@ public class MediaFileService : IMediaFileService
             ".jpg" or ".jpeg" => "image/jpeg",
             ".png" => "image/png",
             ".webp" => "image/webp",
+            ".pdf" => "application/pdf",
+            ".doc" or ".docx" => "application/msword",
+            ".xls" or ".xlsx" => "application/vnd.ms-excel",
+            ".txt" => "text/plain",
+            ".md" => "text/markdown",
+            ".csv" => "text/csv",
+            ".cs" or ".c" or ".cpp" or ".java" => "text/plain",
+            ".js" => "application/javascript",
+            ".json" => "application/json",
+            ".html" => "text/html",
+            ".css" => "text/css",
+            ".py" => "text/x-python",
             _ => "application/octet-stream"
         };
     }
@@ -194,6 +206,11 @@ public class MediaFileService : IMediaFileService
     {
         ".mp4" or ".webm" or ".mkv" => "Video",
         ".jpg" or ".jpeg" or ".png" or ".webp" => "Image",
+        ".pdf" => "PDF Document",
+        ".doc" or ".docx" => "Word Document",
+        ".xls" or ".xlsx" => "Excel Document",
+        ".txt" or ".md" => "Text File",
+        ".cs" or ".js" or ".html" or ".css" or ".json" or ".py" or ".cpp" or ".c" or ".java" => "Code File",
         _ => "File"
     };
 }

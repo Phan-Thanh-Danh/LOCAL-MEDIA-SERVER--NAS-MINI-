@@ -50,6 +50,12 @@ public class MediaController : ControllerBase
         return await StreamMedia(path, isVideo: false);
     }
 
+    [HttpGet("file/{*path}")]
+    public async Task<IActionResult> GetFile(string path)
+    {
+        return await StreamMedia(path, isVideo: false);
+    }
+
     [HttpGet("download/{*path}")]
     public IActionResult DownloadFile(string path)
     {
@@ -104,12 +110,12 @@ public class MediaController : ControllerBase
                     Response.Headers.ContentRange = $"bytes {start.Value}-{end.Value}/{fileInfo.Length}";
                     Response.ContentLength = end.Value - start.Value + 1;
                     stream.Seek(start.Value, SeekOrigin.Begin);
-                    return File(stream, mimeType, enableRangeProcessing: true, fileDownloadName: fileInfo.Name);
+                    return File(stream, mimeType, enableRangeProcessing: true);
                 }
             }
 
             Response.ContentLength = fileInfo.Length;
-            return File(stream, mimeType, enableRangeProcessing: true, fileDownloadName: fileInfo.Name);
+            return File(stream, mimeType, enableRangeProcessing: true);
         }
         catch (UnauthorizedAccessException)
         {
