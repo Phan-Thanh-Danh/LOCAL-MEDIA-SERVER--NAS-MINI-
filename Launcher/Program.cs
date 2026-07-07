@@ -62,12 +62,12 @@ namespace Launcher
 
             InitializeJobObject();
 
-            var beTask = StartProcessWithProgressBar("Backend service", 214, "dotnet", "run --no-build --urls http://0.0.0.0:5000", backendPath);
+            var beTask = StartProcessWithProgressBar("Backend service", 214, "dotnet", "run --urls http://0.0.0.0:5000", backendPath);
             var feTask = StartProcessWithProgressBar("Frontend service", 226, "cmd.exe", "/c npm run dev -- --host 0.0.0.0 --port 5173", frontendPath);
 
             var (backendProc, frontendProc) = (await beTask, await feTask);
             
-            Console.WriteLine("\n  \x1b[1m\x1b[38;5;178m── AUDIT LOG ─────────────────────────────────────────────\x1b[0m");
+            Console.WriteLine("\n  \x1b[1m\x1b[38;5;178m── REQUEST / AUDIT ACTIVITY LOG ───────────────────────────────\x1b[0m");
 
             var beLogTask = StreamLogs(backendProc, isBackend: true);
             var feLogTask = StreamLogs(frontendProc, isBackend: false);
@@ -239,46 +239,69 @@ namespace Launcher
 
         private static async Task StreamLogs(Process process, bool isBackend)
         {
-            var regex = new Regex(@"Request finished HTTP/[0-9\.]+ (GET|POST|PUT|DELETE|PATCH) https?://[^/]+([^ ]*) - (\d+).*?([\d\.,]+)ms", RegexOptions.Compiled);
-            
-            while (!process.StandardOutput.EndOfStream)
+            var serilogRegex = new Regex(
+                @"HTTP\s+(GET|POST|PUT|DELETE|PATCH)\s+([^ ]+)\s+responded\s+(\d+)\s+in\s+([\d\.,]+)\s+ms",
+                RegexOptions.Compiled | RegexOptions.IgnoreCase
+            );
+
+            var aspnetRegex = new Regex(
+                @"Request finished HTTP/[0-9\.]+\s+(GET|POST|PUT|DELETE|PATCH)\s+https?://[^/]+([^ ]*)\s+-\s+(\d+).*?([\d\.,]+)ms",
+                RegexOptions.Compiled | RegexOptions.IgnoreCase
+            );
+
+            async Task ReadStreamAsync(StreamReader reader, string source)
             {
-                string line = await process.StandardOutput.ReadLineAsync();
-                if (string.IsNullOrEmpty(line)) continue;
-
-                if (isBackend)
+                while (!reader.EndOfStream)
                 {
-                    // Strip ANSI codes from Serilog output so Regex can match perfectly
+                    string line = await reader.ReadLineAsync();
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
                     line = Regex.Replace(line, @"\x1B\[[^@-~]*[@-~]", "");
-                    
-                    var match = regex.Match(line);
-                    if (match.Success)
+
+                    if (!isBackend)
+                        continue;
+
+                    var match = serilogRegex.Match(line);
+                    if (!match.Success)
+                        match = aspnetRegex.Match(line);
+
+                    if (!match.Success)
                     {
-                        string method = match.Groups[1].Value;
-                        string endpoint = match.Groups[2].Value;
-                        string status = match.Groups[3].Value;
-                        string latency = match.Groups[4].Value;
-                        
-                        // Limit endpoint length
-                        if (endpoint.Length > 26) endpoint = endpoint.Substring(0, 23) + "...";
-
-                        int mcolor = method == "GET" ? 45 : (method == "POST" ? 214 : (method == "PUT" ? 220 : 203));
-                        int st = int.Parse(status);
-                        int scolor = st < 300 ? 82 : (st < 500 ? 220 : 196);
-                        string level = st < 400 ? "INFO" : (st < 500 ? "WARN" : "ERROR");
-                        int lcolor = level == "INFO" ? 82 : (level == "WARN" ? 220 : 196);
-
-                        string ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-
-                        Console.WriteLine($"  \x1b[38;5;240m[{ts}]\x1b[0m " +
-                                          $"\x1b[1m\x1b[38;5;{lcolor}m{level,-5}\x1b[0m " +
-                                          $"\x1b[38;5;{mcolor}m{method,-5}\x1b[0m " +
-                                          $"{endpoint,-26} " +
-                                          $"\x1b[1m\x1b[38;5;{scolor}m{status}\x1b[0m " +
-                                          $"\x1b[38;5;240m{latency}ms\x1b[0m");
+                        // Uncomment to debug raw log formats:
+                        // Console.WriteLine($"[RAW:{source}] {line}");
+                        continue;
                     }
+
+                    string method = match.Groups[1].Value;
+                    string endpoint = match.Groups[2].Value;
+                    string status = match.Groups[3].Value;
+                    string latency = match.Groups[4].Value;
+
+                    if (endpoint.Length > 40)
+                        endpoint = endpoint.Substring(0, 37) + "...";
+
+                    int st = int.TryParse(status, out var parsedStatus) ? parsedStatus : 0;
+                    string level = st < 400 ? "INFO" : st < 500 ? "WARN" : "ERROR";
+
+                    int mcolor = method.ToUpper() == "GET" ? 45 : (method.ToUpper() == "POST" ? 214 : (method.ToUpper() == "PUT" ? 220 : 203));
+                    int scolor = st < 300 ? 82 : (st < 500 ? 220 : 196);
+                    int lcolor = level == "INFO" ? 82 : (level == "WARN" ? 220 : 196);
+
+                    string ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+                    Console.WriteLine($"  \x1b[38;5;240m[{ts}]\x1b[0m " +
+                                      $"\x1b[1m\x1b[38;5;{lcolor}m{level,-5}\x1b[0m " +
+                                      $"\x1b[38;5;{mcolor}m{method,-6}\x1b[0m " +
+                                      $"{endpoint,-40} " +
+                                      $"\x1b[1m\x1b[38;5;{scolor}m{status}\x1b[0m " +
+                                      $"\x1b[38;5;240m{latency}ms\x1b[0m");
                 }
             }
+
+            var outputTask = ReadStreamAsync(process.StandardOutput, "OUT");
+            var errorTask = ReadStreamAsync(process.StandardError, "ERR");
+
+            await Task.WhenAll(outputTask, errorTask);
         }
     }
 }
