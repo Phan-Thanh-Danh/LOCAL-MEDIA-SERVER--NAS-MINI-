@@ -11,6 +11,7 @@ public interface IMediaFileService
     string GetMimeType(string extension);
     string FormatSize(long size);
     string GetRelativePath(string absolutePath);
+    void MoveItem(string sourcePath, string targetFolder);
 }
 
 public class MediaFileService : IMediaFileService
@@ -139,6 +140,40 @@ public class MediaFileService : IMediaFileService
     public string GetRelativePath(string absolutePath)
     {
         return absolutePath.Replace('\\', '/');
+    }
+
+    public void MoveItem(string sourcePath, string targetFolder)
+    {
+        var absoluteSource = GetAbsolutePath(sourcePath);
+        var absoluteTargetFolder = GetAbsolutePath(targetFolder);
+
+        if (!File.Exists(absoluteSource) && !Directory.Exists(absoluteSource))
+        {
+            throw new FileNotFoundException($"Source not found: {absoluteSource}");
+        }
+
+        if (!Directory.Exists(absoluteTargetFolder))
+        {
+            throw new DirectoryNotFoundException($"Target folder not found: {absoluteTargetFolder}");
+        }
+
+        var entryName = Path.GetFileName(absoluteSource);
+        var absoluteDestination = Path.Combine(absoluteTargetFolder, entryName);
+
+        // Prevent moving a directory into itself or its own subdirectories
+        if (absoluteDestination.StartsWith(absoluteSource + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Cannot move a directory into its own subdirectory.");
+        }
+
+        if (Directory.Exists(absoluteSource))
+        {
+            Directory.Move(absoluteSource, absoluteDestination);
+        }
+        else
+        {
+            File.Move(absoluteSource, absoluteDestination);
+        }
     }
 
     private long GetDirectorySizeSafe(DirectoryInfo dir)

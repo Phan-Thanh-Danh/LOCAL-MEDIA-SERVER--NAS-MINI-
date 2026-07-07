@@ -81,4 +81,29 @@ public class FilesController : ControllerBase
         _pinnedItemService.UnpinItem(request.Path);
         return Ok(new { success = true });
     }
+
+    public class MoveRequest
+    {
+        public string SourcePath { get; set; } = string.Empty;
+        public string TargetFolder { get; set; } = string.Empty;
+    }
+
+    [HttpPost("move")]
+    public IActionResult Move([FromBody] MoveRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.SourcePath) || string.IsNullOrWhiteSpace(request.TargetFolder))
+        {
+            return BadRequest("SourcePath and TargetFolder are required.");
+        }
+
+        try
+        {
+            _mediaFileService.MoveItem(request.SourcePath, request.TargetFolder);
+            return Ok(new { message = "Di chuyển thành công." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }

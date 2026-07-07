@@ -38,7 +38,15 @@
             <Home class="w-4 h-4" /> Home
           </button>
           <span class="text-[#CBD5E1]">/</span>
-          <button @click="goBack" class="text-[#64748B] hover:text-[#2563EB] p-1.5 rounded transition-colors flex items-center gap-1" :disabled="!history.length" :class="{'opacity-50 cursor-not-allowed': !history.length}" title="Quay lại">
+          <button @click="goBack" 
+            @dragover.prevent="onItemDragOver($event, { isDirectory: true, relativePath: parentPath })"
+            @dragenter.prevent="onItemDragEnter($event, { isDirectory: true, relativePath: parentPath })"
+            @dragleave="onItemDragLeave($event, { isDirectory: true, relativePath: parentPath })"
+            @drop="onItemDrop($event, { isDirectory: true, relativePath: parentPath, name: 'Thư mục cha' })"
+            class="text-[#64748B] hover:text-[#2563EB] p-1.5 rounded transition-all flex items-center gap-1 border border-transparent" 
+            :class="{'opacity-50 cursor-not-allowed': !history.length, 'bg-blue-50 border-blue-300 text-[#2563EB]': dragTarget === parentPath && currentPath}" 
+            :disabled="!history.length" 
+            title="Quay lại">
             <ArrowLeft class="w-4 h-4" /> Back
           </button>
           
@@ -46,7 +54,13 @@
             <span class="text-[#CBD5E1] ml-2">|</span>
             <div class="flex items-center gap-1 ml-2 flex-wrap">
               <template v-for="(segment, index) in breadcrumbs" :key="index">
-                <button @click="navigateTo(segment.path)" class="text-[#2563EB] hover:text-blue-700 font-medium transition-colors">
+                <button @click="navigateTo(segment.path)" 
+                  @dragover.prevent="onItemDragOver($event, { isDirectory: true, relativePath: segment.path })"
+                  @dragenter.prevent="onItemDragEnter($event, { isDirectory: true, relativePath: segment.path })"
+                  @dragleave="onItemDragLeave($event, { isDirectory: true, relativePath: segment.path })"
+                  @drop="onItemDrop($event, { isDirectory: true, relativePath: segment.path, name: segment.name })"
+                  class="text-[#2563EB] hover:text-blue-700 font-medium transition-all px-1.5 py-0.5 rounded border border-transparent"
+                  :class="{'bg-blue-50 border-blue-300': dragTarget === segment.path}">
                   {{ segment.name }}
                 </button>
                 <span v-if="index < breadcrumbs.length - 1" class="text-[#CBD5E1]">/</span>
@@ -153,7 +167,15 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-[#E2E8F0]">
-              <tr v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="hover:bg-[#F1F5F9] transition-colors cursor-pointer group">
+              <tr v-for="item in filteredAndSortedItems" :key="item.relativePath" 
+                  @click="openItem(item)" 
+                  draggable="true"
+                  @dragstart="onItemDragStart($event, item)"
+                  @dragover.prevent="onItemDragOver($event, item)"
+                  @dragenter.prevent="onItemDragEnter($event, item)"
+                  @dragleave="onItemDragLeave($event, item)"
+                  @drop="onItemDrop($event, item)"
+                  :class="['transition-colors cursor-pointer group', dragTarget === item ? 'bg-blue-50 border-blue-300' : 'hover:bg-[#F1F5F9]', {'opacity-50': draggedItem === item}]">
                 <td class="px-6 py-3.5 flex items-center gap-3">
                   <component :is="getIconComponent(item)" class="w-5 h-5 flex-shrink-0" :class="getIconColor(item)" />
                   <span class="font-medium text-[#0F172A] text-[14px] truncate max-w-[150px] sm:max-w-[200px] md:max-w-md lg:max-w-lg">{{ item.name }}</span>
@@ -204,7 +226,15 @@
 
         <!-- Card View -->
         <div v-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="bg-white border border-[#E2E8F0] rounded-2xl hover:border-blue-300 hover:shadow-md transition-all cursor-pointer flex flex-col group relative overflow-hidden">
+          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" 
+               @click="openItem(item)" 
+               draggable="true"
+               @dragstart="onItemDragStart($event, item)"
+               @dragover.prevent="onItemDragOver($event, item)"
+               @dragenter.prevent="onItemDragEnter($event, item)"
+               @dragleave="onItemDragLeave($event, item)"
+               @drop="onItemDrop($event, item)"
+               :class="['bg-white border rounded-2xl hover:border-blue-300 hover:shadow-md transition-all cursor-pointer flex flex-col group relative overflow-hidden', dragTarget === item ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-[#E2E8F0]', {'opacity-50': draggedItem === item}]">
             
             <!-- Video Thumbnail Preview -->
             <div v-if="isVideo(item)" class="w-full aspect-video bg-[#F1F5F9] relative overflow-hidden flex items-center justify-center border-b border-[#E2E8F0]">
@@ -291,7 +321,15 @@
 
         <!-- Gallery View -->
         <div v-if="viewMode === 'gallery'" class="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4 space-y-4">
-          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" @click="openItem(item)" class="break-inside-avoid bg-white border border-[#E2E8F0] rounded-2xl hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group relative overflow-hidden">
+          <div v-for="item in filteredAndSortedItems" :key="item.relativePath" 
+               @click="openItem(item)" 
+               draggable="true"
+               @dragstart="onItemDragStart($event, item)"
+               @dragover.prevent="onItemDragOver($event, item)"
+               @dragenter.prevent="onItemDragEnter($event, item)"
+               @dragleave="onItemDragLeave($event, item)"
+               @drop="onItemDrop($event, item)"
+               :class="['break-inside-avoid bg-white border rounded-2xl hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group relative overflow-hidden', dragTarget === item ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-[#E2E8F0]', {'opacity-50': draggedItem === item}]">
             
             <!-- Image / Video Thumbnail -->
             <div v-if="isImage(item) || isVideo(item)" class="w-full relative overflow-hidden bg-[#F1F5F9]">
@@ -540,10 +578,14 @@ const imageScale = ref(1);
 const isMuted = ref(false);
 const fileInput = ref(null);
 const showUploadModal = ref(false);
-const isDragging = ref(false);
+const isDragging = ref(false); // Used for window drag drop upload
 const uploadProgress = ref(0);
 const unlockedPasswords = ref({});
-const dialogInput = ref(null);
+const activeDropdown = ref(null);
+
+// Item Drag & Drop State
+const draggedItem = ref(null);
+const dragTarget = ref(null);
 
 // Vault State
 const vaultUnlocked = ref(false);
@@ -559,6 +601,7 @@ const dialogState = ref({
   inputValue: '',
   resolve: null
 });
+const dialogInput = ref(null);
 
 function showAlert(message, title = 'Thông báo') {
   return new Promise((resolve) => {
@@ -621,6 +664,13 @@ const breadcrumbs = computed(() => {
     result.push({ name: part, path: current });
   }
   return result;
+});
+
+const parentPath = computed(() => {
+  if (!currentPath.value) return '';
+  const parts = currentPath.value.split('/');
+  parts.pop();
+  return parts.join('/');
 });
 
 const filteredAndSortedItems = computed(() => {
@@ -1121,6 +1171,64 @@ async function unpinItem(item) {
   }
 }
 
+// Drag & Drop Item Handlers
+function onItemDragStart(event, item) {
+  draggedItem.value = item;
+  event.dataTransfer.effectAllowed = 'move';
+  // Use a slight delay to allow the drag image to be generated before styling changes
+  setTimeout(() => {
+    // Optionally add a global class to body while dragging
+  }, 0);
+}
+
+function onItemDragEnter(event, item) {
+  if (!draggedItem.value || draggedItem.value.relativePath === item.relativePath || !item.isDirectory) return;
+  dragTarget.value = item.relativePath;
+}
+
+function onItemDragLeave(event, item) {
+  if (dragTarget.value === item.relativePath) {
+    dragTarget.value = null;
+  }
+}
+
+function onItemDragOver(event, item) {
+  if (draggedItem.value && item.isDirectory && draggedItem.value.relativePath !== item.relativePath) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+}
+
+async function onItemDrop(event, item) {
+  const source = draggedItem.value;
+  draggedItem.value = null;
+  dragTarget.value = null;
+
+  if (!source || !item.isDirectory || source.relativePath === item.relativePath) return;
+
+  const targetFolder = item.relativePath;
+
+  // Confirmation
+  const confirmed = await showConfirm(`Bạn có chắc muốn di chuyển '${source.name}' vào thư mục '${item.name}' không?`, "Xác nhận di chuyển");
+  if (!confirmed) return;
+
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    await axios.post(`${base}/api/files/move`, { 
+      sourcePath: source.relativePath,
+      targetFolder: targetFolder
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    await showAlert("Di chuyển thành công!", "Thành công");
+    loadItems();
+  } catch (err) {
+    console.error('Lỗi khi di chuyển:', err);
+    await showAlert(err.response?.data || 'Có lỗi xảy ra khi di chuyển.', "Lỗi");
+  }
+}
+
 async function handleLockFolder() {
   const pwd = await showPrompt(`Nhập mật khẩu để khóa thư mục hiện tại:`, "Khóa thư mục");
   if (!pwd) return;
@@ -1185,24 +1293,16 @@ async function handleCreateFolder() {
 
   try {
     const base = import.meta.env.VITE_API_BASE || '';
-    const response = await fetch(`${base}/api/media/create-folder`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        folderName: folderName,
-        subPath: currentPath.value
-      })
+    const response = await axios.post(`${base}/api/media/create-folder`, {
+      folderName: folderName,
+      subPath: currentPath.value
     });
 
-    if (response.ok) {
-      await showAlert("Đã tạo thư mục thành công!", "Thành công");
-      loadItems();
-    } else {
-      const err = await response.text();
-      await showAlert("Lỗi: " + err, "Lỗi");
-    }
+    await showAlert("Đã tạo thư mục thành công!", "Thành công");
+    loadItems();
   } catch (error) {
-    await showAlert("Không thể kết nối đến Server", "Lỗi mạng");
+    const err = error.response?.data || error.message;
+    await showAlert("Lỗi: " + err, "Lỗi");
   }
 }
 
