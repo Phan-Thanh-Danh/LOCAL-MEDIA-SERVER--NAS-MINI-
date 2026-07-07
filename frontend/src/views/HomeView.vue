@@ -170,6 +170,9 @@
                         <Lock class="w-4 h-4" />
                       </button>
                     </template>
+                    <button @click.stop="renameItem(item)" class="p-1.5 text-[#64748B] hover:bg-indigo-100 hover:text-indigo-600 rounded-md transition-colors" title="Đổi tên">
+                      <Edit3 class="w-4 h-4" />
+                    </button>
                     <button @click.stop="deleteItem(item)" class="p-1.5 text-[#64748B] hover:bg-rose-100 hover:text-rose-600 rounded-md transition-colors" title="Xóa">
                       <Trash2 class="w-4 h-4" />
                     </button>
@@ -225,6 +228,11 @@
             
             <!-- Hover Actions -->
             <div class="absolute top-4 right-14 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+              <button @click.stop="renameItem(item)" class="bg-white hover:bg-indigo-50 text-indigo-500 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Đổi tên">
+                <Edit3 class="w-4 h-4" />
+              </button>
+            </div>
+            <div class="absolute top-4 right-24 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
               <button @click.stop="deleteItem(item)" class="bg-white hover:bg-rose-50 text-rose-500 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Xóa">
                 <Trash2 class="w-4 h-4" />
               </button>
@@ -271,6 +279,9 @@
               <h3 class="font-medium text-white text-[13px] truncate" :title="item.name">{{ item.name }}</h3>
             </div>
             
+            <button @click.stop="renameItem(item)" class="absolute top-2 right-10 opacity-0 group-hover:opacity-100 bg-white hover:bg-indigo-50 text-indigo-500 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Đổi tên">
+              <Edit3 class="w-3.5 h-3.5" />
+            </button>
             <button @click.stop="deleteItem(item)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-white hover:bg-rose-50 text-rose-500 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Xóa">
               <Trash2 class="w-3.5 h-3.5" />
             </button>
@@ -320,6 +331,7 @@
               
               <div class="hidden sm:block w-px h-6 bg-[#E2E8F0] mx-1"></div>
               
+              <button @click="renameItem(selectedMedia)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs sm:text-[13px] font-medium transition-colors flex items-center gap-1"><Edit3 class="w-4 h-4" /> Đổi tên</button>
               <button @click="deleteItem(selectedMedia)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs sm:text-[13px] font-medium transition-colors flex items-center gap-1"><Trash2 class="w-4 h-4" /> Xóa</button>
               <button @click="downloadFile(selectedMedia)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg text-xs sm:text-[13px] font-medium transition-colors flex items-center gap-1"><Download class="w-4 h-4" /> Tải về</button>
               <button @click="closeViewer" class="whitespace-nowrap px-3 sm:px-4 py-1.5 bg-[#0F172A] hover:bg-[#1E293B] text-white rounded-lg text-xs sm:text-[13px] font-medium transition-colors ml-1 flex items-center gap-1"><X class="w-4 h-4" /> Đóng</button>
@@ -881,6 +893,32 @@ function goHome() {
 
 function refresh() {
   loadItems();
+}
+
+async function renameItem(item) {
+  const newName = await showPrompt(`Nhập tên mới cho '${item.name}':`, "Đổi tên");
+  if (!newName || newName === item.name) return;
+  
+  const base = import.meta.env.VITE_API_BASE || '';
+  const token = localStorage.getItem('jwt_token');
+  try {
+    const res = await axios.post(`${base}/api/media/rename`, {
+      path: item.relativePath,
+      newName: newName
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    await showAlert(res.data.Message || 'Đã đổi tên thành công', "Thành công");
+    
+    if (selectedMedia.value && selectedMedia.value.relativePath === item.relativePath) {
+      closeViewer();
+    }
+    
+    loadItems();
+  } catch (err) {
+    console.error('Lỗi khi đổi tên:', err);
+    await showAlert(err.response?.data || 'Có lỗi xảy ra khi đổi tên', "Lỗi");
+  }
 }
 
 async function deleteItem(item) {

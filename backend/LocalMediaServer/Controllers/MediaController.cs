@@ -289,6 +289,46 @@ public class MediaController : ControllerBase
             return BadRequest($"Lỗi khi xóa: {ex.Message}");
         }
     }
+
+    [HttpPost("rename")]
+    public IActionResult RenameItem([FromBody] RenameItemRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path) || string.IsNullOrWhiteSpace(request.NewName))
+            return BadRequest("Đường dẫn và tên mới không được để trống.");
+
+        try
+        {
+            var absolutePath = _mediaFileService.GetAbsolutePath(request.Path);
+            
+            var directory = Path.GetDirectoryName(absolutePath);
+            if (directory == null) return BadRequest("Lỗi đường dẫn.");
+            var newPath = Path.Combine(directory, request.NewName);
+            
+            if (System.IO.File.Exists(newPath) || Directory.Exists(newPath))
+                return BadRequest("Tên này đã tồn tại.");
+
+            if (System.IO.File.Exists(absolutePath))
+            {
+                System.IO.File.Move(absolutePath, newPath);
+                return Ok(new { Message = "Đã đổi tên file thành công." });
+            }
+            else if (Directory.Exists(absolutePath))
+            {
+                Directory.Move(absolutePath, newPath);
+                return Ok(new { Message = "Đã đổi tên thư mục thành công." });
+            }
+            
+            return NotFound("Không tìm thấy file hoặc thư mục.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Lỗi khi đổi tên: {ex.Message}");
+        }
+    }
 }
 
 public class CreateFolderRequest
@@ -306,4 +346,10 @@ public class LockFolderRequest
 public class DeleteItemRequest
 {
     public string? Path { get; set; } = string.Empty;
+}
+
+public class RenameItemRequest
+{
+    public string? Path { get; set; } = string.Empty;
+    public string NewName { get; set; } = string.Empty;
 }
