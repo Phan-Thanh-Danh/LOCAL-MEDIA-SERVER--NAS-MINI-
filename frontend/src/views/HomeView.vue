@@ -152,6 +152,9 @@
                 <td class="px-4 py-3 sm:px-6 sm:py-4 text-slate-400 hidden sm:table-cell">{{ item.sizeFormatted || '-' }}</td>
                 <td class="px-4 py-3 sm:px-6 sm:py-4 text-right">
                   <div class="flex items-center justify-end gap-2">
+                    <button @click.stop="deleteItem(item)" class="sm:opacity-0 sm:group-hover:opacity-100 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1">
+                      🗑 Xóa
+                    </button>
                     <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="sm:opacity-0 sm:group-hover:opacity-100 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ml-auto">
                       ⬇ DL
                     </button>
@@ -211,7 +214,10 @@
               </div>
             </div>
             
-            <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 bg-emerald-500 hover:bg-emerald-400 text-slate-950 p-2 rounded-full shadow-lg transition translate-y-2 group-hover:translate-y-0" title="Download">
+            <button @click.stop="deleteItem(item)" class="absolute top-4 right-14 opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-400 text-white p-2 rounded-full shadow-lg transition translate-y-2 group-hover:translate-y-0 text-xs flex items-center justify-center w-8 h-8" title="Xóa">
+              🗑
+            </button>
+            <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 bg-emerald-500 hover:bg-emerald-400 text-slate-950 p-2 rounded-full shadow-lg transition translate-y-2 group-hover:translate-y-0 text-xs flex items-center justify-center w-8 h-8" title="Download">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                 <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
@@ -249,6 +255,10 @@
             <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-slate-950 via-slate-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
               <h3 class="font-medium text-white text-sm truncate" :title="item.name">{{ item.name }}</h3>
             </div>
+            
+            <button @click.stop="deleteItem(item)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-400 text-white p-1.5 rounded-full shadow-lg transition translate-y-1 group-hover:translate-y-0 text-xs flex items-center justify-center w-7 h-7" title="Xóa">
+              🗑
+            </button>
           </div>
         </div>
       </div>
@@ -294,6 +304,7 @@
               
               <div class="hidden sm:block w-px h-6 bg-slate-700 mx-1"></div>
               
+              <button @click="deleteItem(selectedMedia)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs sm:text-sm font-medium transition">Delete</button>
               <button @click="downloadFile(selectedMedia)" class="whitespace-nowrap px-2 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs sm:text-sm font-medium transition">DL</button>
               <button @click="closeViewer" class="whitespace-nowrap px-3 sm:px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs sm:text-sm font-medium transition ml-1">Close</button>
             </div>
@@ -742,6 +753,31 @@ function goHome() {
 
 function refresh() {
   loadItems();
+}
+
+async function deleteItem(item) {
+  if (!confirm(`Bạn có chắc muốn xóa '${item.name}' vào thùng rác không?`)) return;
+  
+  const base = import.meta.env.VITE_API_BASE || '';
+  const token = localStorage.getItem('jwt_token');
+  try {
+    const res = await axios.post(`${base}/api/media/delete`, {
+      path: item.relativePath
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    alert(res.data.Message || 'Đã xóa vào thùng rác thành công');
+    
+    // Nếu đang mở file bị xóa, đóng nó lại
+    if (selectedMedia.value && selectedMedia.value.relativePath === item.relativePath) {
+      closeViewer();
+    }
+    
+    loadItems();
+  } catch (err) {
+    console.error('Lỗi khi xóa:', err);
+    alert(err.response?.data || 'Có lỗi xảy ra khi xóa');
+  }
 }
 
 async function handleLockFolder() {

@@ -1,6 +1,7 @@
 using LocalMediaServer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.VisualBasic.FileIO;
 
 namespace LocalMediaServer.Controllers;
 
@@ -255,6 +256,39 @@ public class MediaController : ControllerBase
             return BadRequest($"Lỗi: {ex.Message}");
         }
     }
+
+    [HttpPost("delete")]
+    public IActionResult DeleteItem([FromBody] DeleteItemRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+            return BadRequest("Đường dẫn không được để trống.");
+
+        try
+        {
+            var absolutePath = _mediaFileService.GetAbsolutePath(request.Path);
+            
+            if (System.IO.File.Exists(absolutePath))
+            {
+                FileSystem.DeleteFile(absolutePath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                return Ok(new { Message = "Đã xóa file vào thùng rác." });
+            }
+            else if (Directory.Exists(absolutePath))
+            {
+                FileSystem.DeleteDirectory(absolutePath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                return Ok(new { Message = "Đã xóa thư mục vào thùng rác." });
+            }
+            
+            return NotFound("Không tìm thấy file hoặc thư mục.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Lỗi khi xóa: {ex.Message}");
+        }
+    }
 }
 
 public class CreateFolderRequest
@@ -267,4 +301,9 @@ public class LockFolderRequest
 {
     public string? Path { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+}
+
+public class DeleteItemRequest
+{
+    public string? Path { get; set; } = string.Empty;
 }
