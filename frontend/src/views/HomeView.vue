@@ -62,7 +62,7 @@
       </div>
 
       <!-- Filter/Search Toolbar -->
-      <div v-if="!selectedMedia" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 items-center">
+      <div v-if="!selectedMedia" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3 items-center">
         <div class="xl:col-span-2 relative group flex-1 sm:flex-none">
           <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
             🔍
@@ -91,18 +91,18 @@
           </select>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2 xl:col-span-2">
           <button @click="toggleSortDirection" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 transition flex items-center justify-center gap-1">
             {{ sortDirection === 'asc' ? '🔼 Asc' : '🔽 Desc' }}
           </button>
           
-          <button @click="viewMode = 'table'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition', viewMode === 'table' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
+          <button @click="viewMode = 'table'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition flex-1 sm:flex-none whitespace-nowrap', viewMode === 'table' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
             📄 Table
           </button>
-          <button @click="viewMode = 'card'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition', viewMode === 'card' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
+          <button @click="viewMode = 'card'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition flex-1 sm:flex-none whitespace-nowrap', viewMode === 'card' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
             🗂️ Card
           </button>
-          <button @click="viewMode = 'gallery'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition', viewMode === 'gallery' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
+          <button @click="viewMode = 'gallery'" :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition flex-1 sm:flex-none whitespace-nowrap', viewMode === 'gallery' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800']">
             🖼️ Gallery
           </button>
         </div>
