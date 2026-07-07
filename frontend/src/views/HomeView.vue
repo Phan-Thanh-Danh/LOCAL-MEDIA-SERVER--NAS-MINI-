@@ -492,7 +492,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router';
 import { 
@@ -1256,7 +1256,58 @@ function downloadFile(item) {
   document.body.removeChild(link);
 }
 
-watch(currentPath, () => {
+// Global Keyboard Shortcuts
+function handleGlobalKeyDown(e) {
+  // Only process if media viewer is open
+  if (!selectedMedia.value) return;
+  
+  // Don't intercept if user is typing in an input or textarea
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  
+  const video = videoRef.value;
+  
+  switch(e.key) {
+    case ' ': // Space
+      e.preventDefault();
+      if (video) {
+        if (video.paused) video.play();
+        else video.pause();
+      }
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      if (video) video.currentTime = Math.max(0, video.currentTime - 10);
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      if (video) video.currentTime = Math.min(video.duration, video.currentTime + 10);
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      if (video) video.volume = Math.min(1, video.volume + 0.1);
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      if (video) video.volume = Math.max(0, video.volume - 0.1);
+      break;
+    case 'f':
+    case 'F':
+      e.preventDefault();
+      if (video) {
+        if (!document.fullscreenElement) {
+          video.requestFullscreen().catch(err => console.log(err));
+        } else {
+          document.exitFullscreen();
+        }
+      }
+      break;
+    case 'Escape':
+      closeViewer();
+      break;
+  }
+}
+
+watch(() => route.query.path, () => {
   loadItems();
   selectedMedia.value = null;
   imageScale.value = 1;
@@ -1276,7 +1327,12 @@ onMounted(async () => {
       console.error(e);
     }
   }
+  window.addEventListener('keydown', handleGlobalKeyDown);
   loadItems();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeyDown);
 });
 </script>
 
