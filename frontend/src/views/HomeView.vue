@@ -406,6 +406,49 @@
         </div>
       </div>
 
+      <!-- Custom Dialog Overlay -->
+      <div v-if="dialogState.isOpen" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex flex-col items-center justify-center p-4" @click.self="cancelDialog">
+        <div class="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl shadow-xl overflow-hidden flex flex-col transform transition-all animate-in fade-in zoom-in-95 duration-200">
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div :class="[
+                'p-2 rounded-full',
+                dialogState.type === 'alert' ? 'bg-amber-50 text-amber-500' : '',
+                dialogState.type === 'confirm' ? 'bg-blue-50 text-[#2563EB]' : '',
+                dialogState.type === 'prompt' ? 'bg-purple-50 text-purple-600' : ''
+              ]">
+                <AlertCircle v-if="dialogState.type === 'alert'" class="w-6 h-6" />
+                <HelpCircle v-else-if="dialogState.type === 'confirm'" class="w-6 h-6" />
+                <Edit3 v-else-if="dialogState.type === 'prompt'" class="w-6 h-6" />
+              </div>
+              <h3 class="text-lg font-bold text-[#0F172A]">{{ dialogState.title || (dialogState.type === 'alert' ? 'Thông báo' : dialogState.type === 'confirm' ? 'Xác nhận' : 'Nhập liệu') }}</h3>
+            </div>
+            
+            <p class="text-[#475569] text-[14px] mb-5 leading-relaxed">{{ dialogState.message }}</p>
+            
+            <div v-if="dialogState.type === 'prompt'" class="mb-2">
+              <input 
+                type="text" 
+                v-model="dialogState.inputValue" 
+                @keyup.enter="confirmDialog"
+                ref="dialogInput"
+                class="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-[14px] text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] transition-all"
+                placeholder="Nhập thông tin..."
+              >
+            </div>
+          </div>
+          
+          <div class="bg-[#F8FAFC] px-6 py-4 border-t border-[#E2E8F0] flex justify-end gap-3">
+            <button v-if="dialogState.type !== 'alert'" @click="cancelDialog" class="px-4 py-2 text-[14px] font-medium text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0] rounded-lg transition-colors">
+              Hủy
+            </button>
+            <button @click="confirmDialog" class="px-4 py-2 text-[14px] font-medium text-white bg-[#2563EB] hover:bg-blue-700 rounded-lg transition-colors shadow-sm">
+              Đồng ý
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -418,7 +461,8 @@ import {
   Activity, RefreshCw, LogOut, Home, ArrowLeft, Lock, Unlock, FolderPlus, 
   UploadCloud, Search, ArrowDownAz, ArrowUpZa, List, LayoutGrid, ImageIcon, 
   Download, Trash2, Film, Play, Loader2, FolderOpen, ArrowRight, PauseCircle, 
-  PlayCircle, ZoomOut, ZoomIn, VolumeX, Volume2, X, Folder, File, FileText, Image as ImageIcon2
+  PlayCircle, ZoomOut, ZoomIn, VolumeX, Volume2, X, Folder, File, FileText, 
+  Image as ImageIcon2, AlertCircle, HelpCircle, Edit3, HardDrive
 } from 'lucide-vue-next';
 
 const route = useRoute();
@@ -436,6 +480,52 @@ const showUploadModal = ref(false);
 const isDragging = ref(false);
 const uploadProgress = ref(0);
 const unlockedPasswords = ref({});
+const dialogInput = ref(null);
+
+// Dialog State
+const dialogState = ref({
+  isOpen: false,
+  type: 'alert',
+  title: '',
+  message: '',
+  inputValue: '',
+  resolve: null
+});
+
+function showAlert(message, title = 'Thông báo') {
+  return new Promise((resolve) => {
+    dialogState.value = { isOpen: true, type: 'alert', title, message, inputValue: '', resolve };
+  });
+}
+
+function showConfirm(message, title = 'Xác nhận') {
+  return new Promise((resolve) => {
+    dialogState.value = { isOpen: true, type: 'confirm', title, message, inputValue: '', resolve };
+  });
+}
+
+function showPrompt(message, title = 'Nhập liệu') {
+  return new Promise((resolve) => {
+    dialogState.value = { isOpen: true, type: 'prompt', title, message, inputValue: '', resolve };
+    setTimeout(() => {
+      if (dialogInput.value) dialogInput.value.focus();
+    }, 50);
+  });
+}
+
+function confirmDialog() {
+  if (!dialogState.value.isOpen) return;
+  const result = dialogState.value.type === 'prompt' ? dialogState.value.inputValue : true;
+  if (dialogState.value.resolve) dialogState.value.resolve(result);
+  dialogState.value.isOpen = false;
+}
+
+function cancelDialog() {
+  if (!dialogState.value.isOpen) return;
+  const result = dialogState.value.type === 'prompt' ? null : false;
+  if (dialogState.value.resolve) dialogState.value.resolve(result);
+  dialogState.value.isOpen = false;
+}
 
 // New UI State
 const viewMode = ref('table'); // table | card
@@ -562,7 +652,7 @@ async function loadItems() {
   } catch (error) {
     if (error.response?.status === 401 && error.response?.data === 'LOCKED') {
       loading.value = false;
-      const pwd = prompt("Th╞░ mß╗Ñc n├áy ─æ├ú bß╗ï kh├│a. Vui l├▓ng nhß║¡p mß║¡t khß║⌐u:");
+      const pwd = await showPrompt("Thư mục này đã bị khóa. Vui lòng nhập mật khẩu:");
       if (pwd) {
         unlockedPasswords.value[path] = pwd;
         return loadItems();
@@ -571,14 +661,15 @@ async function loadItems() {
         return;
       }
     }
-    console.error("Lß╗ùi khi load danh s├ích file:", error);
-    alert("Lß╗ùi tß║úi file. Kiß╗âm tra backend hoß║╖c mß║¡t khß║⌐u.");
+    console.error("Lỗi khi load danh sách file:", error);
+    await showAlert("Lỗi tải file. Kiểm tra kết nối mạng, server hoặc mật khẩu.", "Lỗi");
   } finally {
     loading.value = false;
   }
 }
 
 function getIconComponent(item) {
+  if (item.type === 'Drive') return item.isLocked ? Lock : HardDrive;
   if (item.isDirectory) return item.isLocked ? Lock : Folder;
   if (isVideo(item)) return Film;
   if (isImage(item)) return ImageIcon2;
@@ -636,7 +727,11 @@ async function checkHistoryAndPlay(path) {
     const stoppedAt = res.data.stoppedAt;
     
     if (stoppedAt > 10) { // Only resume if watched more than 10 seconds
-      if (confirm(`Bß║ín ─æang xem dß╗ƒ ß╗ƒ ph├║t ${Math.floor(stoppedAt / 60)}:${Math.floor(stoppedAt % 60).toString().padStart(2, '0')}. Ph├ít tiß║┐p?`)) {
+      const shouldResume = await showConfirm(
+        `Bạn đang xem dở ở phút ${Math.floor(stoppedAt / 60)}:${Math.floor(stoppedAt % 60).toString().padStart(2, '0')}. Bạn có muốn phát tiếp không?`, 
+        "Tiếp tục xem"
+      );
+      if (shouldResume) {
         isSeeking = true;
         // Wait for video ref
         setTimeout(() => {
@@ -649,7 +744,7 @@ async function checkHistoryAndPlay(path) {
       }
     }
   } catch (err) {
-    console.error("Lß╗ùi lß║Ñy lß╗ïch sß╗¡:", err);
+    console.error("Lỗi lấy lịch sử:", err);
   }
 }
 
@@ -789,7 +884,8 @@ function refresh() {
 }
 
 async function deleteItem(item) {
-  if (!confirm(`Bß║ín c├│ chß║»c muß╗æn x├│a '${item.name}' v├áo th├╣ng r├íc kh├┤ng?`)) return;
+  const confirmed = await showConfirm(`Bạn có chắc muốn xóa '${item.name}' vào thùng rác không?`, "Xác nhận xóa");
+  if (!confirmed) return;
   
   const base = import.meta.env.VITE_API_BASE || '';
   const token = localStorage.getItem('jwt_token');
@@ -799,22 +895,22 @@ async function deleteItem(item) {
     }, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    alert(res.data.Message || '─É├ú x├│a v├áo th├╣ng r├íc th├ánh c├┤ng');
+    await showAlert(res.data.Message || 'Đã xóa vào thùng rác thành công', "Thành công");
     
-    // Nß║┐u ─æang mß╗ƒ file bß╗ï x├│a, ─æ├│ng n├│ lß║íi
+    // Nếu đang mở file bị xóa, đóng nó lại
     if (selectedMedia.value && selectedMedia.value.relativePath === item.relativePath) {
       closeViewer();
     }
     
     loadItems();
   } catch (err) {
-    console.error('Lß╗ùi khi x├│a:', err);
-    alert(err.response?.data || 'C├│ lß╗ùi xß║úy ra khi x├│a');
+    console.error('Lỗi khi xóa:', err);
+    await showAlert(err.response?.data || 'Có lỗi xảy ra khi xóa', "Lỗi");
   }
 }
 
 async function handleLockFolder() {
-  const pwd = prompt(`Nhß║¡p mß║¡t khß║⌐u ─æß╗â kh├│a th╞░ mß╗Ñc hiß╗çn tß║íi:`);
+  const pwd = await showPrompt(`Nhập mật khẩu để khóa thư mục hiện tại:`, "Khóa thư mục");
   if (!pwd) return;
 
   try {
@@ -823,16 +919,16 @@ async function handleLockFolder() {
       path: currentPath.value,
       password: pwd
     });
-    alert(response.data.message || "─É├ú kh├│a th╞░ mß╗Ñc th├ánh c├┤ng!");
+    await showAlert(response.data.message || "Đã khóa thư mục thành công!", "Thành công");
     unlockedPasswords.value[currentPath.value] = pwd;
     loadItems();
   } catch (error) {
-    alert("Lß╗ùi khi kh├│a th╞░ mß╗Ñc: " + (error.response?.data || error.message));
+    await showAlert("Lỗi khi khóa thư mục: " + (error.response?.data || error.message), "Lỗi");
   }
 }
 
 async function lockItem(item) {
-  const pwd = prompt(`Nhß║¡p mß║¡t khß║⌐u ─æß╗â kh├│a th╞░ mß╗Ñc "${item.name}":`);
+  const pwd = await showPrompt(`Nhập mật khẩu để khóa thư mục "${item.name}":`, "Khóa thư mục");
   if (!pwd) return;
 
   try {
@@ -841,16 +937,16 @@ async function lockItem(item) {
       path: item.relativePath,
       password: pwd
     });
-    alert(response.data.message || "─É├ú kh├│a th╞░ mß╗Ñc th├ánh c├┤ng!");
+    await showAlert(response.data.message || "Đã khóa thư mục thành công!", "Thành công");
     unlockedPasswords.value[item.relativePath] = pwd;
     loadItems();
   } catch (error) {
-    alert("Lß╗ùi khi kh├│a th╞░ mß╗Ñc: " + (error.response?.data || error.message));
+    await showAlert("Lỗi khi khóa thư mục: " + (error.response?.data || error.message), "Lỗi");
   }
 }
 
 async function unlockItem(item) {
-  const pwd = prompt(`Nhß║¡p mß║¡t khß║⌐u ─æß╗â gß╗í kh├│a th╞░ mß╗Ñc "${item.name}":`);
+  const pwd = await showPrompt(`Nhập mật khẩu để gỡ khóa thư mục "${item.name}":`, "Mở khóa thư mục");
   if (!pwd) return;
 
   try {
@@ -859,20 +955,20 @@ async function unlockItem(item) {
       path: item.relativePath,
       password: pwd
     });
-    alert(response.data.message || "─É├ú gß╗í kh├│a th╞░ mß╗Ñc th├ánh c├┤ng!");
+    await showAlert(response.data.message || "Đã gỡ khóa thư mục thành công!", "Thành công");
     delete unlockedPasswords.value[item.relativePath];
     loadItems();
   } catch (error) {
     if (error.response?.status === 403) {
-      alert("Mß║¡t khß║⌐u kh├┤ng ─æ├║ng!");
+      await showAlert("Mật khẩu không đúng!", "Lỗi");
     } else {
-      alert("Lß╗ùi khi gß╗í kh├│a th╞░ mß╗Ñc: " + (error.response?.data || error.message));
+      await showAlert("Lỗi khi gỡ khóa thư mục: " + (error.response?.data || error.message), "Lỗi");
     }
   }
 }
 
 async function handleCreateFolder() {
-  const folderName = prompt("Nhß║¡p t├¬n th╞░ mß╗Ñc cß║ºn tß║ío:");
+  const folderName = await showPrompt("Nhập tên thư mục cần tạo:", "Thư mục mới");
   if (!folderName) return;
 
   try {
@@ -887,14 +983,14 @@ async function handleCreateFolder() {
     });
 
     if (response.ok) {
-      alert("─É├ú tß║ío th╞░ mß╗Ñc th├ánh c├┤ng!");
+      await showAlert("Đã tạo thư mục thành công!", "Thành công");
       loadItems();
     } else {
       const err = await response.text();
-      alert("Lß╗ùi: " + err);
+      await showAlert("Lỗi: " + err, "Lỗi");
     }
   } catch (error) {
-    alert("Kh├┤ng thß╗â kß║┐t nß╗æi ─æß║┐n Server");
+    await showAlert("Không thể kết nối đến Server", "Lỗi mạng");
   }
 }
 
@@ -934,12 +1030,12 @@ async function uploadFile(file) {
       }
     });
 
-    alert("Tß║úi file l├¬n th├ánh c├┤ng!");
+    await showAlert("Tải file lên thành công!", "Thành công");
     loadItems();
     showUploadModal.value = false;
   } catch (error) {
     console.error(error);
-    alert("C├│ lß╗ùi xß║úy ra trong qu├í tr├¼nh upload: " + (error.response?.data || error.message));
+    await showAlert("Có lỗi xảy ra trong quá trình upload: " + (error.response?.data || error.message), "Lỗi");
   } finally {
     uploadProgress.value = 0;
     if (fileInput.value) {
@@ -990,12 +1086,13 @@ function downloadFile(item) {
   if (!item || item.isDirectory) return;
 
   const base = import.meta.env.VITE_API_BASE || '';
+  const token = localStorage.getItem('jwt_token') || '';
   const path = item.relativePath
     .split('/')
     .map(segment => encodeURIComponent(segment))
     .join('/');
 
-  const url = `${base}/api/media/download/${path}`;
+  const url = `${base}/api/media/download/${path}?access_token=${token}`;
 
   const link = document.createElement('a');
   link.href = url;

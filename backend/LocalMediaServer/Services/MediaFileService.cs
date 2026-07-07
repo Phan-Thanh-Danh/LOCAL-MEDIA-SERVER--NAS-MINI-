@@ -128,6 +128,27 @@ public class MediaFileService : IMediaFileService
         return absolutePath.Replace('\\', '/');
     }
 
+    private long GetDirectorySizeSafe(DirectoryInfo dir)
+    {
+        long size = 0;
+        try
+        {
+            foreach (FileInfo fi in dir.EnumerateFiles())
+            {
+                size += fi.Length;
+            }
+            foreach (DirectoryInfo di in dir.EnumerateDirectories())
+            {
+                size += GetDirectorySizeSafe(di);
+            }
+        }
+        catch 
+        {
+            // Ignore folders we don't have permission to access
+        }
+        return size;
+    }
+
     private FileItemDto[] GetDrives()
     {
         var entries = new List<FileItemDto>();
@@ -147,7 +168,7 @@ public class MediaFileService : IMediaFileService
                 LastModified = DateTimeOffset.MinValue,
                 CreatedDate = DateTimeOffset.MinValue,
                 IsDirectory = true,
-                IsLocked = false,
+                IsLocked = !_securityService.IsAccessGranted(drive.RootDirectory.FullName, null),
                 MimeType = "application/x-directory"
             });
         }
@@ -175,6 +196,16 @@ public class MediaFileService : IMediaFileService
                 var fileInfo = new FileInfo(entry.FullName);
                 size = fileInfo.Length;
                 sizeFormatted = FormatSize(size);
+            }
+            else
+            {
+                // Only calculate if not locked
+                bool isLockedTmp = !_securityService.IsAccessGranted(entry.FullName, null);
+                if (!isLockedTmp)
+                {
+                    size = GetDirectorySizeSafe((DirectoryInfo)entry);
+                    sizeFormatted = FormatSize(size);
+                }
             }
             lastModified = entry.LastWriteTimeUtc;
             createdDate = entry.CreationTimeUtc;
