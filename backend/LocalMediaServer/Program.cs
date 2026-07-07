@@ -66,6 +66,7 @@ builder.Services.AddSingleton<ThumbnailService>();
 builder.Services.AddSingleton<IMediaFileService, MediaFileService>();
 builder.Services.AddSingleton<FileWatcherService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<FileWatcherService>());
+builder.Services.AddHostedService<SystemMonitorService>();
 
 var app = builder.Build();
 
