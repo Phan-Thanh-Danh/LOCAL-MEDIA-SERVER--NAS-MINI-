@@ -13,5 +13,6 @@ public class FileItemDto
     public bool IsDirectory { get; set; }
     public bool IsLocked { get; set; }
     public bool IsHidden { get; set; }
+    public bool IsPinned { get; set; }
     public string MimeType { get; set; } = string.Empty;
 }

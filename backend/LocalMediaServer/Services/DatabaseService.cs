@@ -47,6 +47,14 @@ public class DatabaseService
         ";
         command.ExecuteNonQuery();
 
+        // 1.3 PinnedItems
+        command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS PinnedItems (
+                Path TEXT PRIMARY KEY
+            );
+        ";
+        command.ExecuteNonQuery();
+
         // 2. Users
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS Users (

@@ -157,6 +157,7 @@
                 <td class="px-6 py-3.5 flex items-center gap-3">
                   <component :is="getIconComponent(item)" class="w-5 h-5 flex-shrink-0" :class="getIconColor(item)" />
                   <span class="font-medium text-[#0F172A] text-[14px] truncate max-w-[150px] sm:max-w-[200px] md:max-w-md lg:max-w-lg">{{ item.name }}</span>
+                  <Star v-if="item.isPinned" class="w-4 h-4 text-yellow-400 flex-shrink-0 ml-1" fill="currentColor" />
                 </td>
                 <td class="px-6 py-3.5 text-[#64748B] text-[13px] hidden sm:table-cell">{{ formatDate(item.lastModified) }}</td>
                 <td class="px-6 py-3.5 hidden md:table-cell">
@@ -165,6 +166,12 @@
                 <td class="px-6 py-3.5 text-[#64748B] text-[13px] hidden sm:table-cell text-right">{{ item.sizeFormatted || '-' }}</td>
                 <td class="px-6 py-3.5 text-right">
                   <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button v-if="!item.isPinned" @click.stop="pinItem(item)" class="p-1.5 text-slate-400 hover:bg-yellow-50 hover:text-yellow-500 rounded-md transition-colors" title="Ghim lên đầu">
+                      <Star class="w-4 h-4" />
+                    </button>
+                    <button v-else @click.stop="unpinItem(item)" class="p-1.5 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 rounded-md transition-colors" title="Bỏ ghim">
+                      <Star class="w-4 h-4" fill="currentColor" />
+                    </button>
                     <button v-if="!item.isDirectory" @click.stop="downloadFile(item)" class="p-1.5 text-[#2563EB] hover:bg-blue-100 hover:text-blue-700 rounded-md transition-colors" title="Tải về">
                       <Download class="w-4 h-4" />
                     </button>
@@ -239,6 +246,15 @@
             </div>
             
             <!-- Hover Actions -->
+            <div :class="{'opacity-0 group-hover:opacity-100': !item.isPinned}" class="absolute top-4 left-4 transition-opacity z-10">
+              <button v-if="!item.isPinned" @click.stop="pinItem(item)" class="bg-white hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Ghim">
+                <Star class="w-4 h-4" />
+              </button>
+              <button v-else @click.stop="unpinItem(item)" class="bg-yellow-50 hover:bg-yellow-100 text-yellow-500 p-2 rounded-full shadow-md border border-yellow-200 flex items-center justify-center w-8 h-8" title="Bỏ ghim">
+                <Star class="w-4 h-4" fill="currentColor" />
+              </button>
+            </div>
+
             <div v-if="item.isDirectory" class="absolute top-4 right-14 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
               <button v-if="!item.isHidden" @click.stop="hideItem(item)" class="bg-white hover:bg-slate-100 text-slate-600 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Ẩn">
                 <EyeOff class="w-4 h-4" />
@@ -299,6 +315,15 @@
               <h3 class="font-medium text-white text-[13px] truncate" :title="item.name">{{ item.name }}</h3>
             </div>
             
+            <div :class="{'opacity-0 group-hover:opacity-100': !item.isPinned}" class="absolute top-2 left-2 transition-opacity z-10">
+              <button v-if="!item.isPinned" @click.stop="pinItem(item)" class="bg-white hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 p-1.5 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Ghim">
+                <Star class="w-3.5 h-3.5" />
+              </button>
+              <button v-else @click.stop="unpinItem(item)" class="bg-yellow-50 hover:bg-yellow-100 text-yellow-500 p-1.5 rounded-full shadow-md border border-yellow-200 flex items-center justify-center w-7 h-7" title="Bỏ ghim">
+                <Star class="w-3.5 h-3.5" fill="currentColor" />
+              </button>
+            </div>
+
             <button v-if="item.isDirectory && !item.isHidden" @click.stop="hideItem(item)" class="absolute top-2 right-10 opacity-0 group-hover:opacity-100 bg-white hover:bg-slate-100 text-slate-600 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Ẩn">
               <EyeOff class="w-3.5 h-3.5" />
             </button>
@@ -500,7 +525,7 @@ import {
   UploadCloud, Search, ArrowDownAz, ArrowUpZa, List, LayoutGrid, ImageIcon, 
   Download, Trash2, Film, Play, Loader2, FolderOpen, ArrowRight, PauseCircle, 
   PlayCircle, ZoomOut, ZoomIn, VolumeX, Volume2, X, Folder, File, FileText, 
-  Image as ImageIcon2, AlertCircle, HelpCircle, Edit3, HardDrive, Eye, EyeOff, Key
+  Image as ImageIcon2, AlertCircle, HelpCircle, Edit3, HardDrive, Eye, EyeOff, Key, Star
 } from 'lucide-vue-next';
 
 const route = useRoute();
@@ -620,6 +645,11 @@ const filteredAndSortedItems = computed(() => {
 
   // 3. Sort
   result.sort((a, b) => {
+    // 3.1 Pinned items first
+    if (a.isPinned !== b.isPinned) {
+      return a.isPinned ? -1 : 1;
+    }
+
     // Folders always on top when sorting by name or type
     if ((sortField.value === 'name' || sortField.value === 'type') && a.isDirectory !== b.isDirectory) {
       return a.isDirectory ? -1 : 1;
@@ -1060,6 +1090,34 @@ async function deleteItem(item) {
   } catch (err) {
     console.error('Lỗi khi xóa:', err);
     await showAlert(err.response?.data || 'Có lỗi xảy ra khi xóa', "Lỗi");
+  }
+}
+
+async function pinItem(item) {
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    await axios.post(`${base}/api/files/pin`, { path: item.relativePath }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // Optimistic UI update
+    item.isPinned = true;
+  } catch (err) {
+    console.error('Lỗi khi ghim:', err);
+  }
+}
+
+async function unpinItem(item) {
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    await axios.post(`${base}/api/files/unpin`, { path: item.relativePath }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // Optimistic UI update
+    item.isPinned = false;
+  } catch (err) {
+    console.error('Lỗi khi bỏ ghim:', err);
   }
 }
 

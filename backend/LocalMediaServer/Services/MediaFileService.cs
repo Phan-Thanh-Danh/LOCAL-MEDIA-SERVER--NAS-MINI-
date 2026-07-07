@@ -18,12 +18,14 @@ public class MediaFileService : IMediaFileService
     private readonly MediaServerOptions _options;
     private readonly FolderSecurityService _securityService;
     private readonly HiddenVaultService _hiddenVaultService;
+    private readonly PinnedItemService _pinnedItemService;
 
-    public MediaFileService(IOptions<MediaServerOptions> options, FolderSecurityService securityService, HiddenVaultService hiddenVaultService)
+    public MediaFileService(IOptions<MediaServerOptions> options, FolderSecurityService securityService, HiddenVaultService hiddenVaultService, PinnedItemService pinnedItemService)
     {
         _options = options.Value;
         _securityService = securityService;
         _hiddenVaultService = hiddenVaultService;
+        _pinnedItemService = pinnedItemService;
     }
 
     public FileItemDto[] ListDirectory(string? subPath, bool showHidden = false)
@@ -38,6 +40,8 @@ public class MediaFileService : IMediaFileService
         {
             throw new DirectoryNotFoundException($"Directory not found: {absolutePath}");
         }
+
+        var pinnedPaths = new HashSet<string>(_pinnedItemService.GetAllPinnedPaths(), StringComparer.OrdinalIgnoreCase);
 
         var entries = new List<FileItemDto>();
         foreach (var path in Directory.GetFileSystemEntries(absolutePath))
@@ -56,7 +60,7 @@ public class MediaFileService : IMediaFileService
                     continue;
                 }
 
-                entries.Add(CreateItem(path, isItemHidden));
+                entries.Add(CreateItem(path, isItemHidden, pinnedPaths));
             }
             catch (Exception)
             {
@@ -184,7 +188,7 @@ public class MediaFileService : IMediaFileService
         return entries.ToArray();
     }
 
-    private FileItemDto CreateItem(string path, bool isItemHidden = false)
+    private FileItemDto CreateItem(string path, bool isItemHidden = false, HashSet<string>? pinnedPaths = null)
     {
         var isDirectory = Directory.Exists(path);
         FileSystemInfo entry = isDirectory ? new DirectoryInfo(path) : new FileInfo(path);
@@ -239,6 +243,7 @@ public class MediaFileService : IMediaFileService
             IsDirectory = isDirectory,
             IsLocked = isLocked,
             IsHidden = isItemHidden,
+            IsPinned = pinnedPaths?.Contains(relativePath) ?? false,
             MimeType = mimeType
         };
     }
