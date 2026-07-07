@@ -23,6 +23,10 @@ const stats = ref(null); // Cho ổ cứng và uptime tĩnh ban đầu
 const loading = ref(true);
 const error = ref('');
 
+const auditLogs = ref([]);
+const auditLogsLoading = ref(true);
+const auditLogsError = ref('');
+
 // --- Chart Data State ---
 const MAX_POINTS = 60; // Hiển thị 60 giây qua
 const timeLabels = Array(MAX_POINTS).fill('');
@@ -116,6 +120,23 @@ async function fetchInitialStats() {
   }
 }
 
+async function fetchAuditLogs() {
+  auditLogsLoading.value = true;
+  auditLogsError.value = '';
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const res = await axios.get(`${base}/api/audit`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('jwt_token')}` }
+    });
+    auditLogs.value = res.data;
+  } catch (err) {
+    auditLogsError.value = "Không thể lấy danh sách nhật ký.";
+    console.error(err);
+  } finally {
+    auditLogsLoading.value = false;
+  }
+}
+
 function setupSignalR() {
   const base = import.meta.env.VITE_API_BASE || '';
   const token = localStorage.getItem('jwt_token');
@@ -166,6 +187,7 @@ function setupSignalR() {
 
 onMounted(() => {
   fetchInitialStats();
+  fetchAuditLogs();
   setupSignalR();
 });
 
@@ -183,7 +205,14 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-import { ArrowLeft, Activity, Cpu, MemoryStick, HardDrive, Network, Disc } from 'lucide-vue-next';
+function formatVNTime(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+import { ArrowLeft, Activity, Cpu, MemoryStick, HardDrive, Network, Disc, FileText } from 'lucide-vue-next';
 
 function goBack() {
   router.push('/');
@@ -336,6 +365,63 @@ function goBack() {
                 Tổng dung lượng: {{ formatBytes(drive.totalSize) }}
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Audit Logs Table -->
+        <div class="bg-white border border-[#E2E8F0] p-6 rounded-2xl shadow-sm overflow-hidden">
+          <h2 class="text-lg font-bold text-[#0F172A] mb-6 flex items-center gap-2">
+            <FileText class="w-5 h-5 text-[#475569]" />
+            Lịch sử thao tác (Audit Logs)
+          </h2>
+          
+          <div v-if="auditLogsLoading" class="flex justify-center p-6">
+             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]"></div>
+          </div>
+          <div v-else-if="auditLogsError" class="text-rose-500 font-medium">
+             {{ auditLogsError }}
+          </div>
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] text-[13px] uppercase tracking-wider">
+                  <th class="p-4 font-semibold whitespace-nowrap">Thời gian</th>
+                  <th class="p-4 font-semibold whitespace-nowrap">Người dùng</th>
+                  <th class="p-4 font-semibold whitespace-nowrap">Thao tác</th>
+                  <th class="p-4 font-semibold whitespace-nowrap">API</th>
+                  <th class="p-4 font-semibold w-1/3">Dữ liệu (JSON)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="log in auditLogs" :key="log.id" class="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors text-[14px]">
+                  <td class="p-4 whitespace-nowrap text-[#475569]">{{ formatVNTime(log.timestamp) }}</td>
+                  <td class="p-4 font-medium text-[#0F172A]">{{ log.username || 'Khách' }}</td>
+                  <td class="p-4">
+                    <span 
+                      class="px-2 py-1 rounded-md text-[12px] font-bold"
+                      :class="{
+                        'bg-blue-100 text-blue-700': log.action === 'POST',
+                        'bg-amber-100 text-amber-700': log.action === 'PUT' || log.action === 'PATCH',
+                        'bg-rose-100 text-rose-700': log.action === 'DELETE',
+                        'bg-gray-100 text-gray-700': !['POST','PUT','DELETE','PATCH'].includes(log.action)
+                      }"
+                    >
+                      {{ log.action }}
+                    </span>
+                  </td>
+                  <td class="p-4 text-[#2563EB] font-medium whitespace-nowrap">{{ log.apiPath }}</td>
+                  <td class="p-4">
+                     <div v-if="log.payload" class="bg-[#F1F5F9] p-2 rounded-md text-[#475569] text-[12px] font-mono break-all max-h-24 overflow-y-auto">
+                        {{ log.payload }}
+                     </div>
+                     <span v-else class="text-[#94A3B8] italic">Không có dữ liệu</span>
+                  </td>
+                </tr>
+                <tr v-if="auditLogs.length === 0">
+                  <td colspan="5" class="p-8 text-center text-[#64748B]">Chưa có dữ liệu ghi nhận.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

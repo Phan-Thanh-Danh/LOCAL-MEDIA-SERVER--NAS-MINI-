@@ -101,5 +101,19 @@ public class DatabaseService
             );
         ";
         command.ExecuteNonQuery();
+
+        // 5. AuditLogs
+        command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS AuditLogs (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Username TEXT,
+                Action TEXT NOT NULL,
+                ApiPath TEXT,
+                Payload TEXT,
+                IpAddress TEXT,
+                Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        ";
+        command.ExecuteNonQuery();
     }
 }

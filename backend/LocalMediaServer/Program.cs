@@ -61,6 +61,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.Configure<MediaServerOptions>(builder.Configuration.GetSection(MediaServerOptions.SectionName));
 builder.Services.AddSingleton<DatabaseService>();
+builder.Services.AddSingleton<AuditLogService>();
 builder.Services.AddSingleton<PinnedItemService>();
 builder.Services.AddSingleton<FolderSecurityService>();
 builder.Services.AddSingleton<HiddenVaultService>();
@@ -76,6 +77,7 @@ app.UseCors();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<AuditLogMiddleware>();
 app.UseMiddleware<PathSecurityMiddleware>();
 app.MapControllers();
 app.MapHub<MediaHub>("/hubs/media");
