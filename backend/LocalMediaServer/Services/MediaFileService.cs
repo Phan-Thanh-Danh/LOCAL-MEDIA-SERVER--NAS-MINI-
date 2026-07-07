@@ -26,6 +26,11 @@ public class MediaFileService : IMediaFileService
 
     public FileItemDto[] ListDirectory(string? subPath)
     {
+        if (string.IsNullOrWhiteSpace(subPath))
+        {
+            return GetDrives();
+        }
+
         var absolutePath = GetAbsolutePath(subPath);
         if (!Directory.Exists(absolutePath))
         {
@@ -64,16 +69,16 @@ public class MediaFileService : IMediaFileService
 
     public string GetAbsolutePath(string? subPath)
     {
-        var root = Path.GetFullPath(_options.RootPath);
         if (string.IsNullOrWhiteSpace(subPath))
         {
-            return root;
+            return string.Empty;
         }
 
-        var fullPath = Path.GetFullPath(Path.Combine(root, subPath));
-        if (!fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        var fullPath = Path.GetFullPath(subPath);
+        var root = Path.GetPathRoot(fullPath);
+        if (root != null && root.StartsWith("C", StringComparison.OrdinalIgnoreCase))
         {
-            throw new UnauthorizedAccessException("Invalid path outside root.");
+            throw new UnauthorizedAccessException("C drive access is denied.");
         }
 
         return fullPath;
@@ -108,11 +113,33 @@ public class MediaFileService : IMediaFileService
 
     public string GetRelativePath(string absolutePath)
     {
-        var root = Path.GetFullPath(_options.RootPath);
-        var fullPath = Path.GetFullPath(absolutePath);
-        return fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase)
-            ? Path.GetRelativePath(root, fullPath).Replace('\\', '/')
-            : string.Empty;
+        return absolutePath.Replace('\\', '/');
+    }
+
+    private FileItemDto[] GetDrives()
+    {
+        var entries = new List<FileItemDto>();
+        foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady && !d.Name.StartsWith("C", StringComparison.OrdinalIgnoreCase)))
+        {
+            string name = drive.Name;
+            try { if (!string.IsNullOrWhiteSpace(drive.VolumeLabel)) name = $"{drive.VolumeLabel} ({drive.Name})"; } catch {}
+
+            entries.Add(new FileItemDto
+            {
+                Name = name,
+                RelativePath = drive.Name.Replace('\\', '/'),
+                Extension = string.Empty,
+                Type = "Drive",
+                Size = drive.TotalSize,
+                SizeFormatted = FormatSize(drive.TotalSize),
+                LastModified = DateTimeOffset.MinValue,
+                CreatedDate = DateTimeOffset.MinValue,
+                IsDirectory = true,
+                IsLocked = false,
+                MimeType = "application/x-directory"
+            });
+        }
+        return entries.ToArray();
     }
 
     private FileItemDto CreateItem(string path)
