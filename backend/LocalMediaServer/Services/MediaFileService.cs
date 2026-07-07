@@ -5,7 +5,7 @@ namespace LocalMediaServer.Services;
 
 public interface IMediaFileService
 {
-    FileItemDto[] ListDirectory(string? subPath);
+    FileItemDto[] ListDirectory(string? subPath, bool showHidden = false);
     FileStream OpenReadStream(string relativePath);
     string GetAbsolutePath(string? subPath);
     string GetMimeType(string extension);
@@ -17,14 +17,16 @@ public class MediaFileService : IMediaFileService
 {
     private readonly MediaServerOptions _options;
     private readonly FolderSecurityService _securityService;
+    private readonly HiddenVaultService _hiddenVaultService;
 
-    public MediaFileService(IOptions<MediaServerOptions> options, FolderSecurityService securityService)
+    public MediaFileService(IOptions<MediaServerOptions> options, FolderSecurityService securityService, HiddenVaultService hiddenVaultService)
     {
         _options = options.Value;
         _securityService = securityService;
+        _hiddenVaultService = hiddenVaultService;
     }
 
-    public FileItemDto[] ListDirectory(string? subPath)
+    public FileItemDto[] ListDirectory(string? subPath, bool showHidden = false)
     {
         if (string.IsNullOrWhiteSpace(subPath))
         {
@@ -47,7 +49,14 @@ public class MediaFileService : IMediaFileService
                 {
                     continue;
                 }
-                entries.Add(CreateItem(path));
+                
+                bool isItemHidden = _hiddenVaultService.IsHidden(path);
+                if (isItemHidden && !showHidden)
+                {
+                    continue;
+                }
+
+                entries.Add(CreateItem(path, isItemHidden));
             }
             catch (Exception)
             {
@@ -175,7 +184,7 @@ public class MediaFileService : IMediaFileService
         return entries.ToArray();
     }
 
-    private FileItemDto CreateItem(string path)
+    private FileItemDto CreateItem(string path, bool isItemHidden = false)
     {
         var isDirectory = Directory.Exists(path);
         FileSystemInfo entry = isDirectory ? new DirectoryInfo(path) : new FileInfo(path);
@@ -222,13 +231,14 @@ public class MediaFileService : IMediaFileService
             Name = entry.Name,
             RelativePath = relativePath,
             Extension = extension,
-            Type = isDirectory ? "File folder" : GetTypeLabel(extension),
+            Type = isDirectory ? "Directory" : "File",
             Size = size,
             SizeFormatted = sizeFormatted,
             LastModified = lastModified,
             CreatedDate = createdDate,
             IsDirectory = isDirectory,
             IsLocked = isLocked,
+            IsHidden = isItemHidden,
             MimeType = mimeType
         };
     }

@@ -62,6 +62,7 @@ builder.Services.AddAuthorization();
 builder.Services.Configure<MediaServerOptions>(builder.Configuration.GetSection(MediaServerOptions.SectionName));
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<FolderSecurityService>();
+builder.Services.AddSingleton<HiddenVaultService>();
 builder.Services.AddSingleton<ThumbnailService>();
 builder.Services.AddSingleton<IMediaFileService, MediaFileService>();
 builder.Services.AddSingleton<FileWatcherService>();

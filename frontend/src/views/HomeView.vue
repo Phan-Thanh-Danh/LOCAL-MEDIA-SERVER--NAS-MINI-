@@ -15,6 +15,12 @@
           <button @click="$router.push('/dashboard')" class="w-full md:w-auto bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#475569] hover:text-[#2563EB] px-4 py-2 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-[14px]">
             <Activity class="w-4 h-4" /> Dashboard
           </button>
+          <button v-if="isVaultPasswordSet" @click="changeVaultPassword" class="w-full md:w-auto bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-[14px]">
+            <Key class="w-4 h-4" /> Đổi MK
+          </button>
+          <button @click="toggleVault" :class="vaultUnlocked ? 'bg-indigo-500 hover:bg-indigo-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'" class="w-full md:w-auto px-4 py-2 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-[14px]">
+            <component :is="vaultUnlocked ? Eye : EyeOff" class="w-4 h-4" /> Két Sắt
+          </button>
           <button @click="refresh" class="w-full md:w-auto bg-blue-50 hover:bg-blue-100 text-[#2563EB] px-4 py-2 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-[14px]">
             <RefreshCw class="w-4 h-4" /> Làm mới
           </button>
@@ -163,6 +169,12 @@
                       <Download class="w-4 h-4" />
                     </button>
                     <template v-if="item.isDirectory">
+                      <button v-if="!item.isHidden" @click.stop="hideItem(item)" class="p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 rounded-md transition-colors" title="Ẩn thư mục">
+                        <EyeOff class="w-4 h-4" />
+                      </button>
+                      <button v-else @click.stop="unhideItem(item)" class="p-1.5 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-600 rounded-md transition-colors" title="Hiện thư mục">
+                        <Eye class="w-4 h-4" />
+                      </button>
                       <button v-if="!item.isLocked" @click.stop="lockItem(item)" class="p-1.5 text-amber-500 hover:bg-amber-100 hover:text-amber-600 rounded-md transition-colors" title="Khóa">
                         <Unlock class="w-4 h-4" />
                       </button>
@@ -227,12 +239,20 @@
             </div>
             
             <!-- Hover Actions -->
-            <div class="absolute top-4 right-14 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+            <div v-if="item.isDirectory" class="absolute top-4 right-14 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+              <button v-if="!item.isHidden" @click.stop="hideItem(item)" class="bg-white hover:bg-slate-100 text-slate-600 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Ẩn">
+                <EyeOff class="w-4 h-4" />
+              </button>
+              <button v-else @click.stop="unhideItem(item)" class="bg-white hover:bg-indigo-50 text-indigo-500 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Bỏ Ẩn">
+                <Eye class="w-4 h-4" />
+              </button>
+            </div>
+            <div :class="item.isDirectory ? 'right-24' : 'right-14'" class="absolute top-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
               <button @click.stop="renameItem(item)" class="bg-white hover:bg-indigo-50 text-indigo-500 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Đổi tên">
                 <Edit3 class="w-4 h-4" />
               </button>
             </div>
-            <div class="absolute top-4 right-24 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+            <div :class="item.isDirectory ? 'right-[136px]' : 'right-24'" class="absolute top-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
               <button @click.stop="deleteItem(item)" class="bg-white hover:bg-rose-50 text-rose-500 p-2 rounded-full shadow-md border border-[#E2E8F0] flex items-center justify-center w-8 h-8" title="Xóa">
                 <Trash2 class="w-4 h-4" />
               </button>
@@ -279,10 +299,16 @@
               <h3 class="font-medium text-white text-[13px] truncate" :title="item.name">{{ item.name }}</h3>
             </div>
             
-            <button @click.stop="renameItem(item)" class="absolute top-2 right-10 opacity-0 group-hover:opacity-100 bg-white hover:bg-indigo-50 text-indigo-500 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Đổi tên">
+            <button v-if="item.isDirectory && !item.isHidden" @click.stop="hideItem(item)" class="absolute top-2 right-10 opacity-0 group-hover:opacity-100 bg-white hover:bg-slate-100 text-slate-600 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Ẩn">
+              <EyeOff class="w-3.5 h-3.5" />
+            </button>
+            <button v-else-if="item.isDirectory && item.isHidden" @click.stop="unhideItem(item)" class="absolute top-2 right-10 opacity-0 group-hover:opacity-100 bg-white hover:bg-indigo-50 text-indigo-500 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Hiện">
+              <Eye class="w-3.5 h-3.5" />
+            </button>
+            <button @click.stop="renameItem(item)" :class="item.isDirectory ? 'right-[72px]' : 'right-10'" class="absolute top-2 opacity-0 group-hover:opacity-100 bg-white hover:bg-indigo-50 text-indigo-500 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Đổi tên">
               <Edit3 class="w-3.5 h-3.5" />
             </button>
-            <button @click.stop="deleteItem(item)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-white hover:bg-rose-50 text-rose-500 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Xóa">
+            <button @click.stop="deleteItem(item)" :class="item.isDirectory ? 'right-[104px]' : 'right-[72px]'" class="absolute top-2 opacity-0 group-hover:opacity-100 bg-white hover:bg-rose-50 text-rose-500 p-1.5 rounded-full shadow-md transition-opacity border border-[#E2E8F0] flex items-center justify-center w-7 h-7" title="Xóa">
               <Trash2 class="w-3.5 h-3.5" />
             </button>
           </div>
@@ -474,7 +500,7 @@ import {
   UploadCloud, Search, ArrowDownAz, ArrowUpZa, List, LayoutGrid, ImageIcon, 
   Download, Trash2, Film, Play, Loader2, FolderOpen, ArrowRight, PauseCircle, 
   PlayCircle, ZoomOut, ZoomIn, VolumeX, Volume2, X, Folder, File, FileText, 
-  Image as ImageIcon2, AlertCircle, HelpCircle, Edit3, HardDrive
+  Image as ImageIcon2, AlertCircle, HelpCircle, Edit3, HardDrive, Eye, EyeOff, Key
 } from 'lucide-vue-next';
 
 const route = useRoute();
@@ -493,6 +519,11 @@ const isDragging = ref(false);
 const uploadProgress = ref(0);
 const unlockedPasswords = ref({});
 const dialogInput = ref(null);
+
+// Vault State
+const vaultUnlocked = ref(false);
+const isVaultPasswordSet = ref(false);
+const vaultPassword = ref('');
 
 // Dialog State
 const dialogState = ref({
@@ -649,7 +680,10 @@ async function loadItems() {
   try {
     const base = import.meta.env.VITE_API_BASE || '';
     const password = unlockedPasswords.value[path] || '';
-    const response = await axios.get(`${base}/api/files`, { params: { path, password } });
+    const response = await axios.get(`${base}/api/files`, { 
+      params: { path, password },
+      headers: { 'Vault-Password': vaultPassword.value }
+    });
     items.value = response.data;
     
     // Auto-detect Gallery Mode
@@ -893,6 +927,88 @@ function goHome() {
 
 function refresh() {
   loadItems();
+}
+
+async function toggleVault() {
+  if (vaultUnlocked.value) {
+    vaultUnlocked.value = false;
+    vaultPassword.value = '';
+    loadItems();
+    return;
+  }
+
+  if (!isVaultPasswordSet.value) {
+    const pwd = await showPrompt("Két sắt chưa được thiết lập. Vui lòng nhập mật khẩu Két Sắt mới:", "Khởi tạo Két Sắt");
+    if (!pwd) return;
+    try {
+      const base = import.meta.env.VITE_API_BASE || '';
+      const token = localStorage.getItem('jwt_token');
+      await axios.post(`${base}/api/media/vault/password`, { newPassword: pwd }, { headers: { Authorization: `Bearer ${token}` } });
+      isVaultPasswordSet.value = true;
+      vaultPassword.value = pwd;
+      vaultUnlocked.value = true;
+      await showAlert("Đã thiết lập Két Sắt thành công!", "Thành công");
+      loadItems();
+    } catch (err) {
+      await showAlert(err.response?.data || "Lỗi khi thiết lập mật khẩu.", "Lỗi");
+    }
+  } else {
+    const pwd = await showPrompt("Vui lòng nhập mật khẩu Két Sắt:", "Mở khóa Két Sắt");
+    if (!pwd) return;
+    vaultPassword.value = pwd;
+    vaultUnlocked.value = true;
+    loadItems();
+  }
+}
+
+async function changeVaultPassword() {
+  if (!isVaultPasswordSet.value) return;
+  const oldPwd = await showPrompt("Nhập mật khẩu Két Sắt cũ:", "Đổi mật khẩu Két Sắt");
+  if (!oldPwd) return;
+  const newPwd = await showPrompt("Nhập mật khẩu Két Sắt mới:", "Đổi mật khẩu Két Sắt");
+  if (!newPwd) return;
+  
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    await axios.post(`${base}/api/media/vault/password`, { oldPassword: oldPwd, newPassword: newPwd }, { headers: { Authorization: `Bearer ${token}` } });
+    if (vaultUnlocked.value) {
+      vaultPassword.value = newPwd;
+    }
+    await showAlert("Đã đổi mật khẩu Két Sắt thành công!", "Thành công");
+  } catch (err) {
+    await showAlert(err.response?.data || "Lỗi khi đổi mật khẩu.", "Lỗi");
+  }
+}
+
+async function hideItem(item) {
+  if (!isVaultPasswordSet.value || !vaultUnlocked.value) {
+    await showAlert("Bạn phải mở khóa Két Sắt trước khi ẩn thư mục.", "Yêu cầu Két Sắt");
+    return;
+  }
+  const confirmed = await showConfirm(`Bạn có chắc muốn ẩn '${item.name}' không?`, "Xác nhận Ẩn");
+  if (!confirmed) return;
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    await axios.post(`${base}/api/media/vault/hide`, { path: item.relativePath, password: vaultPassword.value }, { headers: { Authorization: `Bearer ${token}` } });
+    await showAlert("Đã ẩn thư mục thành công.", "Thành công");
+    loadItems();
+  } catch (err) {
+    await showAlert(err.response?.data || "Lỗi khi ẩn thư mục.", "Lỗi");
+  }
+}
+
+async function unhideItem(item) {
+  try {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const token = localStorage.getItem('jwt_token');
+    await axios.post(`${base}/api/media/vault/unhide`, { path: item.relativePath, password: vaultPassword.value }, { headers: { Authorization: `Bearer ${token}` } });
+    await showAlert("Đã bỏ ẩn thư mục thành công.", "Thành công");
+    loadItems();
+  } catch (err) {
+    await showAlert(err.response?.data || "Lỗi khi bỏ ẩn thư mục.", "Lỗi");
+  }
 }
 
 async function renameItem(item) {
@@ -1147,7 +1263,19 @@ watch(currentPath, () => {
   isMuted.value = false;
 });
 
-onMounted(() => {
+onMounted(async () => {
+  const base = import.meta.env.VITE_API_BASE || '';
+  const token = localStorage.getItem('jwt_token');
+  if (token) {
+    try {
+      const res = await axios.get(`${base}/api/media/vault/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      isVaultPasswordSet.value = res.data.isSet;
+    } catch (e) {
+      console.error(e);
+    }
+  }
   loadItems();
 });
 </script>

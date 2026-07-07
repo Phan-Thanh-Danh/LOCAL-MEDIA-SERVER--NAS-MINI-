@@ -30,6 +30,23 @@ public class DatabaseService
         ";
         command.ExecuteNonQuery();
 
+        // 1.1 Settings
+        command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS Settings (
+                Key TEXT PRIMARY KEY,
+                Value TEXT NOT NULL
+            );
+        ";
+        command.ExecuteNonQuery();
+
+        // 1.2 HiddenFolders
+        command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS HiddenFolders (
+                Path TEXT PRIMARY KEY
+            );
+        ";
+        command.ExecuteNonQuery();
+
         // 2. Users
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS Users (

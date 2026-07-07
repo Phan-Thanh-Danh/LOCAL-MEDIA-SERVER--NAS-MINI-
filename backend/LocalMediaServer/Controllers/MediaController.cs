@@ -13,12 +13,14 @@ public class MediaController : ControllerBase
     private readonly IMediaFileService _mediaFileService;
     private readonly ThumbnailService _thumbnailService;
     private readonly FolderSecurityService _securityService;
+    private readonly HiddenVaultService _hiddenVaultService;
 
-    public MediaController(IMediaFileService mediaFileService, ThumbnailService thumbnailService, FolderSecurityService securityService)
+    public MediaController(IMediaFileService mediaFileService, ThumbnailService thumbnailService, FolderSecurityService securityService, HiddenVaultService hiddenVaultService)
     {
         _mediaFileService = mediaFileService;
         _thumbnailService = thumbnailService;
         _securityService = securityService;
+        _hiddenVaultService = hiddenVaultService;
     }
 
     [HttpGet("thumbnail/{*relativePath}")]
@@ -329,6 +331,66 @@ public class MediaController : ControllerBase
             return BadRequest($"Lỗi khi đổi tên: {ex.Message}");
         }
     }
+
+    [HttpGet("vault/status")]
+    public IActionResult GetVaultStatus()
+    {
+        return Ok(new { IsSet = _hiddenVaultService.IsPasswordSet() });
+    }
+
+    [HttpPost("vault/password")]
+    public IActionResult SetVaultPassword([FromBody] SetVaultPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+            return BadRequest("Mật khẩu không được để trống.");
+        try
+        {
+            if (_hiddenVaultService.IsPasswordSet())
+            {
+                _hiddenVaultService.ChangePassword(request.OldPassword, request.NewPassword);
+                return Ok(new { Message = "Đã đổi mật khẩu két sắt." });
+            }
+            else
+            {
+                _hiddenVaultService.SetPassword(request.NewPassword);
+                return Ok(new { Message = "Đã khởi tạo mật khẩu két sắt." });
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Lỗi: {ex.Message}");
+        }
+    }
+
+    [HttpPost("vault/hide")]
+    public IActionResult HideItem([FromBody] VaultActionRequest request)
+    {
+        if (!_hiddenVaultService.VerifyPassword(request.Password))
+            return StatusCode(403, "Mật khẩu két sắt không chính xác.");
+        if (string.IsNullOrWhiteSpace(request.Path))
+            return BadRequest("Path is empty.");
+            
+        var absolutePath = _mediaFileService.GetAbsolutePath(request.Path);
+        _hiddenVaultService.HideFolder(absolutePath);
+        return Ok(new { Message = "Đã ẩn thư mục thành công." });
+    }
+
+    [HttpPost("vault/unhide")]
+    public IActionResult UnhideItem([FromBody] VaultActionRequest request)
+    {
+        if (!_hiddenVaultService.VerifyPassword(request.Password))
+            return StatusCode(403, "Mật khẩu két sắt không chính xác.");
+        if (string.IsNullOrWhiteSpace(request.Path))
+            return BadRequest("Path is empty.");
+            
+        var absolutePath = _mediaFileService.GetAbsolutePath(request.Path);
+        _hiddenVaultService.UnhideFolder(absolutePath);
+        return Ok(new { Message = "Đã bỏ ẩn thư mục thành công." });
+    }
 }
 
 public class CreateFolderRequest
@@ -352,4 +414,16 @@ public class RenameItemRequest
 {
     public string? Path { get; set; } = string.Empty;
     public string NewName { get; set; } = string.Empty;
+}
+
+public class SetVaultPasswordRequest
+{
+    public string? OldPassword { get; set; }
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public class VaultActionRequest
+{
+    public string? Path { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }
