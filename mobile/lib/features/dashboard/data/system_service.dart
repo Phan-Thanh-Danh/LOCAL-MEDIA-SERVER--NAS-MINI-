@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../models/dashboard_info.dart';
+import '../models/audit_log.dart';
 
 final systemServiceProvider = Provider<SystemService>((ref) {
   return SystemService(ApiClient.instance);
@@ -32,5 +33,13 @@ class SystemService {
   Future<DashboardInfo> getDashboardInfo() async {
     final response = await _apiClient.get('/api/system/dashboard');
     return DashboardInfo.fromJson(response);
+  }
+
+  Future<List<AuditLog>> getAuditLogs({int limit = 50}) async {
+    final response = await _apiClient.get('/api/audit', queryParameters: {'limit': limit});
+    if (response != null) {
+      return (response as List).map((json) => AuditLog.fromJson(json)).toList();
+    }
+    return [];
   }
 }
