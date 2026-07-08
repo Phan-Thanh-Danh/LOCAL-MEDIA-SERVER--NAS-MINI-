@@ -42,21 +42,21 @@ public class MediaController : ControllerBase
     }
 
     [HttpGet("video/{*path}")]
-    public async Task<IActionResult> GetVideo(string path)
+    public IActionResult GetVideo(string path)
     {
-        return await StreamMedia(path, isVideo: true);
+        return StreamMedia(path, isVideo: true);
     }
 
     [HttpGet("image/{*path}")]
-    public async Task<IActionResult> GetImage(string path)
+    public IActionResult GetImage(string path)
     {
-        return await StreamMedia(path, isVideo: false);
+        return StreamMedia(path, isVideo: false);
     }
 
     [HttpGet("file/{*path}")]
-    public async Task<IActionResult> GetFile(string path)
+    public IActionResult GetFile(string path)
     {
-        return await StreamMedia(path, isVideo: false);
+        return StreamMedia(path, isVideo: false);
     }
 
     [HttpGet("download/{*path}")]
@@ -88,7 +88,7 @@ public class MediaController : ControllerBase
         }
     }
 
-    private async Task<IActionResult> StreamMedia(string path, bool isVideo)
+    private IActionResult StreamMedia(string path, bool isVideo)
     {
         try
         {
@@ -100,25 +100,7 @@ public class MediaController : ControllerBase
             }
 
             var mimeType = _mediaFileService.GetMimeType(Path.GetExtension(fullPath));
-            var stream = _mediaFileService.OpenReadStream(path);
-            Response.Headers.AcceptRanges = "bytes";
-
-            var rangeHeader = Request.Headers.Range.ToString();
-            if (!string.IsNullOrWhiteSpace(rangeHeader) && rangeHeader.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase))
-            {
-                var (start, end) = ParseRange(rangeHeader, fileInfo.Length);
-                if (start.HasValue && end.HasValue)
-                {
-                    Response.StatusCode = StatusCodes.Status206PartialContent;
-                    Response.Headers.ContentRange = $"bytes {start.Value}-{end.Value}/{fileInfo.Length}";
-                    Response.ContentLength = end.Value - start.Value + 1;
-                    stream.Seek(start.Value, SeekOrigin.Begin);
-                    return File(stream, mimeType, enableRangeProcessing: true);
-                }
-            }
-
-            Response.ContentLength = fileInfo.Length;
-            return File(stream, mimeType, enableRangeProcessing: true);
+            return PhysicalFile(fullPath, mimeType, enableRangeProcessing: true);
         }
         catch (UnauthorizedAccessException)
         {
@@ -128,18 +110,6 @@ public class MediaController : ControllerBase
         {
             return BadRequest();
         }
-    }
-
-    private static (long? start, long? end) ParseRange(string rangeHeader, long fileLength)
-    {
-        var range = rangeHeader.Substring("bytes=".Length).Split('-');
-        if (range.Length != 2) return (null, null);
-        if (long.TryParse(range[0], out var start) && long.TryParse(range[1], out var end))
-        {
-            var endValue = end < fileLength - 1 ? end : fileLength - 1;
-            return (start, endValue);
-        }
-        return (null, null);
     }
 
     [HttpPost("upload")]

@@ -88,6 +88,11 @@ public class MediaFileService : IMediaFileService
             return string.Empty;
         }
 
+        if (subPath.Length == 2 && subPath[1] == ':')
+        {
+            subPath += "\\";
+        }
+
         var fullPath = Path.GetFullPath(subPath);
         var root = Path.GetPathRoot(fullPath);
         if (root != null && root.StartsWith("C", StringComparison.OrdinalIgnoreCase))

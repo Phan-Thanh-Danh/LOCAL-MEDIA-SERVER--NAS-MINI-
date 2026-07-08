@@ -71,4 +71,21 @@ class FileTypeHelper {
     if (lowerName.endsWith('.mp4') || lowerName.endsWith('.mkv') || lowerName.endsWith('.avi') || lowerName.endsWith('.mov') || lowerName.endsWith('.wmv') || lowerName.endsWith('.flv') || lowerName.endsWith('.webm')) return true;
     return false;
   }
+
+  static bool isPdf(String name, String type) {
+    final lowerName = name.toLowerCase();
+    return lowerName.endsWith('.pdf') || type.toLowerCase() == 'application/pdf';
+  }
+
+  static bool isText(String name, String type) {
+    final lowerName = name.toLowerCase();
+    if (lowerName.endsWith('.txt') || lowerName.endsWith('.md') || lowerName.endsWith('.csv') || lowerName.endsWith('.json') || lowerName.endsWith('.xml') || lowerName.endsWith('.html') || lowerName.endsWith('.css') || lowerName.endsWith('.js') || lowerName.endsWith('.dart')) return true;
+    if (type.toLowerCase().startsWith('text/')) return true;
+    return false;
+  }
+
+  static bool isWord(String name, String type) {
+    final lowerName = name.toLowerCase();
+    return lowerName.endsWith('.doc') || lowerName.endsWith('.docx') || type.toLowerCase() == 'application/msword';
+  }
 }
