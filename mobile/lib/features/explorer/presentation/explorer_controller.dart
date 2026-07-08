@@ -10,6 +10,7 @@ class ExplorerState {
   final String currentPath;
   final bool isVaultUnlocked;
   final FileItem? itemToMove;
+  final Map<String, String> lockedFolderPasswords;
 
   ExplorerState({
     this.isLoading = false,
@@ -18,6 +19,7 @@ class ExplorerState {
     this.currentPath = '',
     this.isVaultUnlocked = false,
     this.itemToMove,
+    this.lockedFolderPasswords = const {},
   });
 
   ExplorerState copyWith({
@@ -28,6 +30,7 @@ class ExplorerState {
     bool? isVaultUnlocked,
     FileItem? itemToMove,
     bool clearItemToMove = false,
+    Map<String, String>? lockedFolderPasswords,
   }) {
     return ExplorerState(
       isLoading: isLoading ?? this.isLoading,
@@ -36,6 +39,7 @@ class ExplorerState {
       currentPath: currentPath ?? this.currentPath,
       isVaultUnlocked: isVaultUnlocked ?? this.isVaultUnlocked,
       itemToMove: clearItemToMove ? null : (itemToMove ?? this.itemToMove),
+      lockedFolderPasswords: lockedFolderPasswords ?? this.lockedFolderPasswords,
     );
   }
 }
@@ -53,7 +57,8 @@ class ExplorerController extends Notifier<ExplorerState> {
   Future<void> loadFiles(String path) async {
     state = state.copyWith(isLoading: true, currentPath: path, error: null);
     try {
-      final items = await _fileService.getFiles(path);
+      final password = state.lockedFolderPasswords[path];
+      final items = await _fileService.getFiles(path, password: password);
       state = state.copyWith(isLoading: false, items: items);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -93,6 +98,22 @@ class ExplorerController extends Notifier<ExplorerState> {
       final items = await _fileService.getFiles(state.currentPath, password: password);
       _vaultService.setGlobalVaultPassword(password);
       state = state.copyWith(items: items, isVaultUnlocked: true, error: null);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> unlockLockedFolder(String password) async {
+    try {
+      final items = await _fileService.getFiles(state.currentPath, password: password);
+      final newMap = Map<String, String>.from(state.lockedFolderPasswords);
+      newMap[state.currentPath] = password;
+      state = state.copyWith(
+        items: items, 
+        lockedFolderPasswords: newMap, 
+        error: null,
+      );
       return true;
     } catch (e) {
       return false;

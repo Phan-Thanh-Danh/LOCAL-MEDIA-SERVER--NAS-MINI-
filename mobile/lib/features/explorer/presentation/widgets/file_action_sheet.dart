@@ -11,6 +11,7 @@ class FileActionSheet extends StatelessWidget {
   final VoidCallback onDownload;
   final VoidCallback onPinToggle;
   final VoidCallback onVaultToggle;
+  final VoidCallback onLockToggle;
 
   const FileActionSheet({
     super.key,
@@ -21,6 +22,7 @@ class FileActionSheet extends StatelessWidget {
     required this.onDownload,
     required this.onPinToggle,
     required this.onVaultToggle,
+    required this.onLockToggle,
   });
 
   @override
@@ -71,6 +73,15 @@ class FileActionSheet extends StatelessWidget {
             title: const Text('Đổi tên'),
             onTap: onRename,
           ),
+          if (item.isDirectory)
+            ListTile(
+              leading: Icon(
+                item.isLocked ? LucideIcons.lockOpen : LucideIcons.lock,
+                color: item.isLocked ? AppColors.success : AppColors.secondary,
+              ),
+              title: Text(item.isLocked ? 'Mở khóa thư mục' : 'Khóa thư mục'),
+              onTap: onLockToggle,
+            ),
           if (item.isDirectory)
             ListTile(
               leading: Icon(item.isHidden ? LucideIcons.eye : LucideIcons.eyeOff, color: AppColors.secondary),

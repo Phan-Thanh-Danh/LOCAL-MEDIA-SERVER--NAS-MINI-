@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/storage/secure_storage_service.dart';
 import 'explorer_controller.dart';
 import 'widgets/file_list_item.dart';
 import 'widgets/file_grid_item.dart';
@@ -157,6 +158,33 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
             ),
           );
         },
+        onLockToggle: () {
+          Navigator.pop(context);
+          showDialog(
+            context: context,
+            builder: (context) => VaultPasswordDialog(
+              onConfirm: (password) async {
+                try {
+                  if (item.isLocked) {
+                    await ref.read(vaultServiceProvider).unlockFolder(item.relativePath, password);
+                  } else {
+                    await ref.read(vaultServiceProvider).lockFolder(item.relativePath, password);
+                  }
+                  ref.read(explorerControllerProvider.notifier).refresh();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(item.isLocked ? 'Đã mở khóa thư mục' : 'Đã khóa thư mục')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                }
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -197,8 +225,27 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
             onPressed: () {
               if (state.isVaultUnlocked) {
                 controller.lockVault();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã khóa Két Sắt')),
+                );
               } else {
-                // TODO: Show unlock dialog
+                showDialog(
+                  context: context,
+                  builder: (context) => VaultPasswordDialog(
+                    onConfirm: (password) async {
+                      final success = await controller.unlockVault(password);
+                      if (success && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đã mở khóa Két Sắt')),
+                        );
+                      } else if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Mật khẩu không chính xác')),
+                        );
+                      }
+                    },
+                  ),
+                );
               }
             },
           ),
@@ -209,6 +256,29 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
           IconButton(
             icon: const Icon(LucideIcons.layoutDashboard),
             onPressed: () => context.push('/dashboard'),
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'logout') {
+                final storage = SecureStorageService();
+                await storage.deleteToken();
+                if (mounted) {
+                  context.go('/login');
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.logOut, size: 18),
+                    SizedBox(width: 8),
+                    Text('Đăng xuất'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -223,19 +293,48 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : state.error != null
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(LucideIcons.alertCircle, size: 48, color: AppColors.error),
-                            const SizedBox(height: 16),
-                            Text(state.error!, textAlign: TextAlign.center),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: controller.refresh,
-                              child: const Text('Thử lại'),
-                            ),
-                          ],
-                        ),
+                        child: state.error!.contains('LOCKED')
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(LucideIcons.lock, size: 64, color: AppColors.warning),
+                                  const SizedBox(height: 16),
+                                  const Text('Thư mục này đã bị khóa', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton.icon(
+                                    icon: const Icon(LucideIcons.key),
+                                    label: const Text('Nhập mật khẩu'),
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => VaultPasswordDialog(
+                                          onConfirm: (password) async {
+                                            final success = await controller.unlockLockedFolder(password);
+                                            if (!success && mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Mật khẩu không chính xác')),
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(LucideIcons.alertCircle, size: 48, color: AppColors.error),
+                                  const SizedBox(height: 16),
+                                  Text(state.error!, style: const TextStyle(fontSize: 16)),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: () => controller.refresh(),
+                                    child: const Text('Thử lại'),
+                                  ),
+                                ],
+                              ),
                       )
                     : RefreshIndicator(
                         onRefresh: controller.refresh,

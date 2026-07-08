@@ -38,9 +38,12 @@ class ApiClient {
       },
       onError: (DioException e, handler) {
         if (e.response?.statusCode == 401) {
-          // Token expired or invalid
-          _storageService.deleteToken();
-          // We can broadcast an event here to navigate to Login
+          final responseData = e.response?.data?.toString() ?? '';
+          if (!responseData.contains('LOCKED')) {
+            // Token expired or invalid
+            _storageService.deleteToken();
+            // We can broadcast an event here to navigate to Login
+          }
         }
         return handler.next(e);
       },
