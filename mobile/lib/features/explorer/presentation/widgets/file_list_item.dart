@@ -30,7 +30,7 @@ class FileListItem extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: FileTypeHelper.getColorForType(item.type, item.isDirectory).withAlpha(25),
+                color: FileTypeHelper.getColorForType(item.type, item.isDirectory, item.name).withAlpha(25),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: (FileTypeHelper.isImage(item.name, item.type) || FileTypeHelper.isVideo(item.name, item.type))
@@ -40,14 +40,14 @@ class FileListItem extends StatelessWidget {
                       height: 48,
                       borderRadius: 12,
                       fallback: Icon(
-                        FileTypeHelper.getIconForType(item.type, item.isDirectory),
-                        color: FileTypeHelper.getColorForType(item.type, item.isDirectory),
+                        FileTypeHelper.getIconForType(item.type, item.isDirectory, item.name),
+                        color: FileTypeHelper.getColorForType(item.type, item.isDirectory, item.name),
                         size: 24,
                       ),
                     )
                   : Icon(
-                      FileTypeHelper.getIconForType(item.type, item.isDirectory),
-                      color: FileTypeHelper.getColorForType(item.type, item.isDirectory),
+                      FileTypeHelper.getIconForType(item.type, item.isDirectory, item.name),
+                      color: FileTypeHelper.getColorForType(item.type, item.isDirectory, item.name),
                       size: 24,
                     ),
             ),

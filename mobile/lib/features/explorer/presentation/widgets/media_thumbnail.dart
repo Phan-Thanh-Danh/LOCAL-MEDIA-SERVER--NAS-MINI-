@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/file_type_helper.dart';
 import '../../models/file_item.dart';
 
 class MediaThumbnail extends StatefulWidget {
@@ -39,10 +40,11 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
     final token = await _storageService.getToken();
     
     if (baseUrl != null && baseUrl.isNotEmpty) {
-      // Endpoint API thumbnail: /api/media/thumbnail/{*relativePath}
-      // Encode path to handle spaces
       final encodedPath = Uri.encodeComponent(widget.item.relativePath).replaceAll('%2F', '/');
-      final fullUrl = '$baseUrl/api/media/thumbnail/$encodedPath';
+      
+      final isVideo = FileTypeHelper.isVideo(widget.item.name, widget.item.type);
+      final endpoint = isVideo ? 'thumbnail' : 'image';
+      final fullUrl = '$baseUrl/api/media/$endpoint/$encodedPath';
       
       final headers = <String, String>{};
       if (token != null && token.isNotEmpty) {

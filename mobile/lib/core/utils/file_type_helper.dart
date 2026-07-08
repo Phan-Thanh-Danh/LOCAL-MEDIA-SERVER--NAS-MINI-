@@ -2,22 +2,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/material.dart';
 
 class FileTypeHelper {
-  static IconData getIconForType(String type, bool isDirectory) {
+  static IconData getIconForType(String type, bool isDirectory, [String name = '']) {
     if (isDirectory) return LucideIcons.folder;
+    if (isVideo(name, type)) return LucideIcons.film;
+    if (isImage(name, type)) return LucideIcons.image;
     
     switch (type.toLowerCase()) {
-      case 'video':
-      case 'video/mp4':
-      case 'video/x-matroska':
-      case 'video/x-msvideo':
-        return LucideIcons.film;
-      case 'hình ảnh':
-      case 'image':
-      case 'image/jpeg':
-      case 'image/png':
-      case 'image/gif':
-      case 'image/webp':
-        return LucideIcons.image;
       case 'âm thanh':
       case 'audio':
       case 'audio/mpeg':
@@ -42,18 +32,12 @@ class FileTypeHelper {
     }
   }
 
-  static Color getColorForType(String type, bool isDirectory) {
+  static Color getColorForType(String type, bool isDirectory, [String name = '']) {
     if (isDirectory) return const Color(0xFFF59E0B); // Amber
+    if (isVideo(name, type)) return const Color(0xFF8B5CF6); // Purple
+    if (isImage(name, type)) return const Color(0xFF0EA5E9); // Sky blue
     
     switch (type.toLowerCase()) {
-      case 'video':
-      case 'video/mp4':
-        return const Color(0xFF8B5CF6); // Purple
-      case 'hình ảnh':
-      case 'image':
-      case 'image/jpeg':
-      case 'image/png':
-        return const Color(0xFF0EA5E9); // Sky blue
       case 'âm thanh':
       case 'audio':
         return const Color(0xFFEC4899); // Pink

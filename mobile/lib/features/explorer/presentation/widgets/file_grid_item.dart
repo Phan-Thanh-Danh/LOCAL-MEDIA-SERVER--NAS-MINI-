@@ -82,11 +82,11 @@ class FileGridItem extends ConsumerWidget {
 
   Widget _buildPlaceholder() {
     return Container(
-      color: FileTypeHelper.getColorForType(item.type, item.isDirectory).withAlpha(25),
+      color: FileTypeHelper.getColorForType(item.type, item.isDirectory, item.name).withAlpha(25),
       child: Center(
         child: Icon(
-          FileTypeHelper.getIconForType(item.type, item.isDirectory),
-          color: FileTypeHelper.getColorForType(item.type, item.isDirectory),
+          FileTypeHelper.getIconForType(item.type, item.isDirectory, item.name),
+          color: FileTypeHelper.getColorForType(item.type, item.isDirectory, item.name),
           size: 32,
         ),
       ),
