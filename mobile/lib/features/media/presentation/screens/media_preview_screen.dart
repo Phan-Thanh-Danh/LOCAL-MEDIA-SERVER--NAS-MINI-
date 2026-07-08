@@ -80,17 +80,21 @@ class MediaPreviewScreen extends ConsumerWidget {
   }
 
   Widget _buildImagePreview(WidgetRef ref) {
-    return CachedNetworkImage(
-      imageUrl: url,
-      httpHeaders: _getHeaders(ref),
-      fit: BoxFit.contain,
-      width: double.infinity,
-      height: double.infinity,
-      placeholder: (context, url) => const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
-      errorWidget: (context, url, error) => const Center(
-        child: Icon(LucideIcons.imageOff, color: Colors.white54, size: 100),
+    return InteractiveViewer(
+      minScale: 0.5,
+      maxScale: 4.0,
+      child: CachedNetworkImage(
+        imageUrl: url,
+        httpHeaders: _getHeaders(ref),
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+        placeholder: (context, url) => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+        errorWidget: (context, url, error) => const Center(
+          child: Icon(LucideIcons.imageOff, color: Colors.white54, size: 100),
+        ),
       ),
     );
   }

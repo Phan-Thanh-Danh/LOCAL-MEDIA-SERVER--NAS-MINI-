@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../providers/files_provider.dart';
 import '../providers/file_actions_provider.dart';
 import '../widgets/file_action_bottom_sheet.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/vault_provider.dart';
-import 'package:file_picker/file_picker.dart';
+import '../providers/view_mode_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -115,10 +118,119 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
+  Widget _buildFileIcon(BuildContext context, WidgetRef ref, dynamic file, double size) {
+    IconData icon;
+    Color color = AppColors.secondary;
+    if (file.isDirectory) {
+      icon = LucideIcons.folder;
+      color = Colors.amber[600]!;
+    } else {
+      final ext = file.extension.toLowerCase();
+      if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].contains(ext)) {
+        final auth = ref.watch(authProvider);
+        final vaultPass = ref.watch(vaultProvider);
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: CachedNetworkImage(
+            imageUrl: 'http://192.168.2.10:5000/api/Media/thumbnail/${file.relativePath}',
+            httpHeaders: {
+              if (auth.token != null) 'Authorization': 'Bearer ${auth.token}',
+              if (vaultPass != null) 'Vault-Password': vaultPass,
+            },
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorWidget: (c, u, e) => Icon(LucideIcons.image, size: size, color: AppColors.secondary),
+          ),
+        );
+      } else if (['.mp4', '.mkv', '.avi', '.mov'].contains(ext)) {
+        icon = LucideIcons.clapperboard;
+      } else if (['.mp3', '.wav', '.flac'].contains(ext)) {
+        icon = LucideIcons.music;
+      } else {
+        icon = LucideIcons.file;
+      }
+    }
+    return Icon(icon, size: size, color: color);
+  }
+
+  Widget _buildListView(BuildContext context, WidgetRef ref, List<dynamic> files) {
+    return ListView.separated(
+      itemCount: files.length,
+      separatorBuilder: (context, index) => const Divider(height: 1, thickness: 1, color: AppColors.border),
+      itemBuilder: (context, index) {
+        final file = files[index];
+        return ListTile(
+          leading: _buildFileIcon(context, ref, file, 24),
+          title: Text(file.name, style: Theme.of(context).textTheme.titleMedium),
+          subtitle: Text(file.isDirectory ? 'Folder' : file.sizeFormatted),
+          onTap: () => _handleTap(context, ref, file),
+          trailing: IconButton(
+            icon: const Icon(LucideIcons.moreVertical, size: 20),
+            onPressed: () => _showActions(context, file),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGridView(BuildContext context, WidgetRef ref, List<dynamic> files) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(8),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: files.length,
+      itemBuilder: (context, index) {
+        final file = files[index];
+        return InkWell(
+          onTap: () => _handleTap(context, ref, file),
+          child: Column(
+            children: [
+              Expanded(child: _buildFileIcon(context, ref, file, 48)),
+              const SizedBox(height: 4),
+              Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleTap(BuildContext context, WidgetRef ref, dynamic file) {
+    if (file.isDirectory) {
+      ref.read(currentPathProvider.notifier).setPath(file.relativePath);
+    } else {
+      final ext = file.extension.toLowerCase();
+      String viewType = 'unknown';
+      if (['.mp4', '.mkv', '.avi', '.mov'].contains(ext)) viewType = 'video';
+      else if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].contains(ext)) viewType = 'image';
+      if (viewType != 'unknown') {
+        context.push('/media', extra: {
+          'title': file.name,
+          'type': viewType,
+          'url': Uri.encodeFull('http://192.168.2.10:5000/api/Media/$viewType/${file.relativePath}'),
+          'relativePath': file.relativePath,
+        });
+      }
+    }
+  }
+
+  void _showActions(BuildContext context, dynamic file) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) => FileActionBottomSheet(file: file),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentPath = ref.watch(currentPathProvider);
     final filesAsyncValue = ref.watch(filesProvider);
+    final viewMode = ref.watch(viewModeProvider);
     final isVaultUnlocked = ref.watch(vaultProvider) != null;
 
     return Scaffold(
@@ -140,9 +252,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(LucideIcons.search),
-            onPressed: () {
-              // TODO: Implement Search
-            },
+            onPressed: () {},
           ),
           IconButton(
             icon: const Icon(LucideIcons.logOut),
@@ -155,7 +265,6 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Breadcrumb Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             decoration: const BoxDecoration(
@@ -165,44 +274,18 @@ class HomeScreen extends ConsumerWidget {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () {
-                    if (currentPath.isNotEmpty) {
-                      ref.read(currentPathProvider.notifier).setPath('');
-                    }
-                  },
+                  onTap: () => ref.read(currentPathProvider.notifier).setPath(''),
                   child: const Icon(LucideIcons.home, size: 18, color: AppColors.secondary),
                 ),
                 const SizedBox(width: 8),
-                const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.textSecondary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    currentPath.isEmpty ? 'Home' : currentPath,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                Expanded(child: Text(currentPath.isEmpty ? 'Home' : currentPath, overflow: TextOverflow.ellipsis)),
+                IconButton(
+                  icon: Icon(viewMode == ViewMode.list ? LucideIcons.layoutGrid : LucideIcons.list),
+                  onPressed: () => ref.read(viewModeProvider.notifier).toggleMode(),
                 ),
-                if (currentPath.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      final parts = currentPath.split('/');
-                      if (parts.length > 1) {
-                        parts.removeLast();
-                        ref.read(currentPathProvider.notifier).setPath(parts.join('/'));
-                      } else {
-                        ref.read(currentPathProvider.notifier).setPath('');
-                      }
-                    },
-                    child: const Icon(LucideIcons.arrowUpCircle, size: 18, color: AppColors.primary),
-                  ),
               ],
             ),
           ),
-          // File List
           Expanded(
             child: Container(
               color: AppColors.surface,
@@ -217,110 +300,11 @@ class HomeScreen extends ConsumerWidget {
                     );
                   }
                   
-                  return ListView.separated(
-                    itemCount: files.length,
-                    separatorBuilder: (context, index) => const Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: AppColors.border,
-                    ),
-                    itemBuilder: (context, index) {
-                      final file = files[index];
-                      IconData icon;
-                      Color iconColor = AppColors.secondary;
-                      
-                      if (file.isDirectory) {
-                        icon = LucideIcons.folder;
-                        iconColor = Colors.amber[600]!;
-                      } else {
-                        final ext = file.extension.toLowerCase();
-                        if (['.mp4', '.mkv', '.avi', '.mov'].contains(ext)) {
-                          icon = LucideIcons.clapperboard;
-                        } else if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].contains(ext)) {
-                          icon = LucideIcons.image;
-                        } else if (['.mp3', '.wav', '.flac'].contains(ext)) {
-                          icon = LucideIcons.music;
-                        } else {
-                          icon = LucideIcons.file;
-                        }
-                      }
-
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          splashColor: AppColors.splash,
-                          highlightColor: AppColors.splash,
-                          onTap: () {
-                            if (file.isDirectory) {
-                              ref.read(currentPathProvider.notifier).setPath(file.relativePath);
-                            } else {
-                              final ext = file.extension.toLowerCase();
-                              String viewType = 'unknown';
-                              if (['.mp4', '.mkv', '.avi', '.mov'].contains(ext)) {
-                                viewType = 'video';
-                              } else if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].contains(ext)) {
-                                viewType = 'image';
-                              }
-                              
-                              if (viewType != 'unknown') {
-                                // Provide actual URL later from media endpoint
-                                context.push('/media', extra: {
-                                  'title': file.name,
-                                  'type': viewType,
-                                  'url': Uri.encodeFull('http://192.168.2.10:5000/api/Media/$viewType/${file.relativePath}'),
-                                  'relativePath': file.relativePath,
-                                });
-                              }
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                            child: Row(
-                              children: [
-                                Icon(icon, color: iconColor, size: 24),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        file.name,
-                                        style: Theme.of(context).textTheme.titleMedium,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        file.isDirectory 
-                                          ? 'Folder • ${file.lastModified.toLocal().toString().split(' ')[0]}'
-                                          : '${file.lastModified.toLocal().toString().split(' ')[0]} • ${file.sizeFormatted}',
-                                        style: Theme.of(context).textTheme.bodyMedium,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(LucideIcons.moreVertical, size: 20),
-                                  color: AppColors.secondary,
-                                  onPressed: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      shape: const RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                                      ),
-                                      builder: (context) => FileActionBottomSheet(file: file),
-                                    );
-                                  },
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
+                  return viewMode == ViewMode.list 
+                    ? _buildListView(context, ref, files)
+                    : _buildGridView(context, ref, files);
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => Center(child: CircularProgressIndicator(color: AppColors.primary)),
                 error: (error, stackTrace) => Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
