@@ -34,16 +34,16 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
   void _onItemTap(dynamic item, ExplorerController controller) {
     if (item.isDirectory) {
       if (item.isLocked && !ref.read(explorerControllerProvider).isVaultUnlocked) {
-        _showUnlockVaultDialog(item.name);
+        _showUnlockVaultDialog(item.relativePath);
       } else {
-        controller.navigateTo(item.name);
+        controller.navigateToPath(item.relativePath);
       }
     } else {
       context.push('/media-preview', extra: item);
     }
   }
 
-  void _showUnlockVaultDialog(String folderName) {
+  void _showUnlockVaultDialog(String folderPath) {
     showDialog(
       context: context,
       builder: (context) => VaultPasswordDialog(
@@ -51,7 +51,7 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
           final controller = ref.read(explorerControllerProvider.notifier);
           final success = await controller.unlockVault(password);
           if (success && mounted) {
-            controller.navigateTo(folderName);
+            controller.navigateToPath(folderPath);
           } else if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Mật khẩu không chính xác')),
