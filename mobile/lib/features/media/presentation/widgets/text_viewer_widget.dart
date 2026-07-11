@@ -30,7 +30,8 @@ class _TextViewerWidgetState extends State<TextViewerWidget> {
       final token = await _storage.getToken();
       
       if (baseUrl != null) {
-        final url = '$baseUrl/api/media/download/${Uri.encodeComponent(widget.item.relativePath)}';
+        final encodedPath = Uri.encodeComponent(widget.item.relativePath).replaceAll('%2F', '/');
+        final url = '$baseUrl/api/media/file/$encodedPath';
         final dio = Dio();
         final response = await dio.get(
           url,

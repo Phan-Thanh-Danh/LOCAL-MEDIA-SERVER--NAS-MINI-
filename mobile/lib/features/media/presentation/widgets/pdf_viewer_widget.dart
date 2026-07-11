@@ -28,7 +28,8 @@ class _PdfViewerWidgetState extends State<PdfViewerWidget> {
     final token = await _storage.getToken();
     
     if (baseUrl != null) {
-      final url = '$baseUrl/api/media/stream/${Uri.encodeComponent(widget.item.relativePath)}';
+      final encodedPath = Uri.encodeComponent(widget.item.relativePath).replaceAll('%2F', '/');
+      final url = '$baseUrl/api/media/file/$encodedPath';
       setState(() {
         _url = url;
         _token = token;
