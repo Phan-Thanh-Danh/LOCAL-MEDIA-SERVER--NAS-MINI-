@@ -29,8 +29,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/media-preview',
       builder: (context, state) {
-        final item = state.extra as FileItem;
-        return MediaPreviewScreen(item: item);
+        final extra = state.extra as Map<String, dynamic>;
+        final items = extra['items'] as List<FileItem>;
+        final initialIndex = extra['initialIndex'] as int;
+        return MediaPreviewScreen(items: items, initialIndex: initialIndex);
       },
     ),
     GoRoute(

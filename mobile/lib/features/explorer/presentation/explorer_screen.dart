@@ -39,7 +39,12 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
         controller.navigateToPath(item.relativePath);
       }
     } else {
-      context.push('/media-preview', extra: item);
+      final items = ref.read(explorerControllerProvider).items.where((i) => !i.isDirectory).toList();
+      final initialIndex = items.indexWhere((i) => i.relativePath == item.relativePath);
+      context.push('/media-preview', extra: {
+        'items': items,
+        'initialIndex': initialIndex >= 0 ? initialIndex : 0,
+      });
     }
   }
 
