@@ -137,10 +137,10 @@ class ExplorerController extends Notifier<ExplorerState> {
   Future<void> confirmMove() async {
     if (state.itemToMove == null) return;
     final item = state.itemToMove!;
-    final newPath = state.currentPath.isEmpty ? item.name : '${state.currentPath}/${item.name}';
+    final targetFolder = state.currentPath;
     
     try {
-      await _fileService.moveItem(item.relativePath, newPath);
+      await _fileService.moveItem(item.relativePath, targetFolder);
       cancelMoveFlow();
       refresh();
     } catch (e) {
