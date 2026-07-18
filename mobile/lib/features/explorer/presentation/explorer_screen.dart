@@ -19,7 +19,6 @@ import '../data/pinned_item_service.dart';
 import '../../vault/data/vault_service.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/utils/download_helper.dart';
-import '../../../core/storage/secure_storage_service.dart';
 
 class ExplorerScreen extends ConsumerStatefulWidget {
   const ExplorerScreen({super.key});

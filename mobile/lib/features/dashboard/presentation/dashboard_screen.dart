@@ -33,12 +33,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   
   // Chart Data State
   static const int maxPoints = 60;
-  List<double> _cpuData = List.filled(maxPoints, 0.0, growable: true);
-  List<double> _ramData = List.filled(maxPoints, 0.0, growable: true);
-  List<double> _diskReadData = List.filled(maxPoints, 0.0, growable: true);
-  List<double> _diskWriteData = List.filled(maxPoints, 0.0, growable: true);
-  List<double> _netReceiveData = List.filled(maxPoints, 0.0, growable: true);
-  List<double> _netSendData = List.filled(maxPoints, 0.0, growable: true);
+  final List<double> _cpuData = List.filled(maxPoints, 0.0, growable: true);
+  final List<double> _ramData = List.filled(maxPoints, 0.0, growable: true);
+  final List<double> _diskReadData = List.filled(maxPoints, 0.0, growable: true);
+  final List<double> _diskWriteData = List.filled(maxPoints, 0.0, growable: true);
+  final List<double> _netReceiveData = List.filled(maxPoints, 0.0, growable: true);
+  final List<double> _netSendData = List.filled(maxPoints, 0.0, growable: true);
 
   SystemMetrics _currentMetrics = SystemMetrics();
 

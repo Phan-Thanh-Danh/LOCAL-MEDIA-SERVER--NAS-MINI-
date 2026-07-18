@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
@@ -22,8 +23,23 @@ class DownloadHelper {
         SnackBar(content: Text('Đang tải "$fileName"...')),
       );
 
-      final dir = await getTemporaryDirectory();
-      final savePath = '${dir.path}/$fileName';
+      Directory? baseDir;
+      if (Platform.isAndroid) {
+        baseDir = Directory('/storage/emulated/0/Download');
+      } else {
+        baseDir = await getApplicationDocumentsDirectory();
+      }
+      
+      String savePath = '${baseDir.path}/$fileName';
+      
+      // Handle file name collision
+      int counter = 1;
+      while (await File(savePath).exists()) {
+        final nameWithoutExt = fileName.contains('.') ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
+        final ext = fileName.contains('.') ? fileName.substring(fileName.lastIndexOf('.')) : '';
+        savePath = '${baseDir.path}/$nameWithoutExt($counter)$ext';
+        counter++;
+      }
 
       final dio = Dio();
       final headers = <String, String>{};
@@ -31,7 +47,8 @@ class DownloadHelper {
         headers['Authorization'] = 'Bearer $token';
       }
       
-      final url = '$baseUrl/api/media/download/${Uri.encodeComponent(relativePath)}';
+      final encodedPath = Uri.encodeComponent(relativePath).replaceAll('%2F', '/');
+      final url = '$baseUrl/api/media/download/$encodedPath';
 
       await dio.download(
         url,
