@@ -47,8 +47,8 @@ namespace Launcher
         public static async Task MainAsync(string[] args)
         {
             EnableAnsi();
-            Console.Title = "NAS DANZODEX - Services";
-            Console.Clear();
+            try { Console.Title = "NAS DANZODEX - Services"; } catch { }
+            try { Console.Clear(); } catch { }
 
             PrintLogo("NAS_DANZODEX");
 
@@ -64,13 +64,22 @@ namespace Launcher
 
             var beTask = StartProcessWithProgressBar("Backend service", 214, "dotnet", "run --urls http://0.0.0.0:5000", backendPath);
             var feTask = StartProcessWithProgressBar("Frontend service", 226, "cmd.exe", "/c npm run dev -- --host 0.0.0.0 --port 5173", frontendPath);
+            var cfTask = StartProcessWithProgressBar("Cloudflare Tunnel", 208, "cloudflared", "tunnel --url https://localhost:5173 --no-tls-verify --logfile cloudflare_tunnel.log", basePath);
 
-            var (backendProc, frontendProc) = (await beTask, await feTask);
+            var (backendProc, frontendProc, cloudflareProc) = (await beTask, await feTask, await cfTask);
             
-            Console.WriteLine("\n  \x1b[1m\x1b[38;5;178m── REQUEST / AUDIT ACTIVITY LOG ───────────────────────────────\x1b[0m");
+            Console.WriteLine();
+            Console.WriteLine("  \x1b[1m\x1b[38;5;51m╔═══════════════════════ LOCAL SERVICES ═══════════════════════╗\x1b[0m");
+            Console.WriteLine("  \x1b[1m\x1b[38;5;51m║\x1b[0m  \x1b[38;5;214mBackend\x1b[0m  : http://0.0.0.0:5000                            \x1b[1m\x1b[38;5;51m║\x1b[0m");
+            Console.WriteLine("  \x1b[1m\x1b[38;5;51m║\x1b[0m  \x1b[38;5;226mFrontend\x1b[0m : https://localhost:5173                         \x1b[1m\x1b[38;5;51m║\x1b[0m");
+            Console.WriteLine("  \x1b[1m\x1b[38;5;51m╚══════════════════════════════════════════════════════════════╝\x1b[0m");
+            Console.WriteLine();
 
-            var beLogTask = StreamLogs(backendProc, isBackend: true);
-            var feLogTask = StreamLogs(frontendProc, isBackend: false);
+            Console.WriteLine("  \x1b[1m\x1b[38;5;178m── REQUEST / AUDIT ACTIVITY LOG ───────────────────────────────\x1b[0m");
+
+            var beLogTask = StreamLogs(backendProc, "Backend");
+            var feLogTask = StreamLogs(frontendProc, "Frontend");
+            var cfLogTask = StreamLogs(cloudflareProc, "Cloudflare");
 
             Console.WriteLine("  \x1b[1m\x1b[38;5;82m✔ System ready. All services operational.\x1b[0m\n");
 
@@ -79,13 +88,13 @@ namespace Launcher
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "http://127.0.0.1:5173",
+                    FileName = "https://localhost:5173",
                     UseShellExecute = true
                 });
             }
             catch { }
 
-            await Task.WhenAll(beLogTask, feLogTask);
+            await Task.WhenAll(beLogTask, feLogTask, cfLogTask);
         }
 
         private static void EnableAnsi()
@@ -142,9 +151,7 @@ namespace Launcher
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8,
-                StandardErrorEncoding = System.Text.Encoding.UTF8
+                RedirectStandardError = true
             };
 
             var proc = Process.Start(psi);
@@ -237,7 +244,7 @@ namespace Launcher
             }
         }
 
-        private static async Task StreamLogs(Process process, bool isBackend)
+        private static async Task StreamLogs(Process process, string serviceType)
         {
             var serilogRegex = new Regex(
                 @"HTTP\s+(GET|POST|PUT|DELETE|PATCH)\s+([^ ]+)\s+responded\s+(\d+)\s+in\s+([\d\.,]+)\s+ms",
@@ -249,33 +256,80 @@ namespace Launcher
                 RegexOptions.Compiled | RegexOptions.IgnoreCase
             );
 
+            var cfRegex = new Regex(@"https://[a-zA-Z0-9-]+\.trycloudflare\.com", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            bool cfUrlFound = false;
+
+            if (serviceType == "Cloudflare")
+            {
+                _ = Task.Run(async () =>
+                {
+                    string logPath = "cloudflare_tunnel.log";
+                    while (!process.HasExited)
+                    {
+                        try
+                        {
+                            File.AppendAllText("cf_poll_debug.log", $"Poll: {File.Exists(logPath)}\n");
+                            if (File.Exists(logPath))
+                            {
+                                using var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                                using var reader = new StreamReader(fs);
+                                string content = await reader.ReadToEndAsync();
+                                File.AppendAllText("cf_poll_debug.log", $"Read {content.Length} bytes\n");
+                                
+                                if (!cfUrlFound)
+                                {
+                                    var match = cfRegex.Match(content);
+                                    if (match.Success)
+                                    {
+                                        cfUrlFound = true;
+                                        string url = match.Value;
+                                        try { Console.Title = $"NAS DANZODEX - {url}"; } catch { }
+                                        Console.WriteLine();
+                                        Console.WriteLine($"  \x1b[1m\x1b[38;5;82m╔═════════════════════════ PUBLIC ACCESS ═════════════════════════╗\x1b[0m");
+                                        Console.WriteLine($"  \x1b[1m\x1b[38;5;82m║\x1b[0m \x1b[38;5;208mCloudflare Tunnel:\x1b[0m \x1b[1m\x1b[38;5;51m{url,-44}\x1b[0m\x1b[1m\x1b[38;5;82m║\x1b[0m");
+                                        Console.WriteLine($"  \x1b[1m\x1b[38;5;82m╚═════════════════════════════════════════════════════════════════╝\x1b[0m");
+                                        Console.WriteLine();
+                                        File.AppendAllText("cf_poll_debug.log", $"Found URL: {url}\n");
+                                        break; // Found it, no need to poll anymore
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex) { File.AppendAllText("cf_poll_debug.log", $"Error: {ex.Message}\n"); }
+                        await Task.Delay(500);
+                    }
+                });
+                return;
+            }
+
             async Task ReadStreamAsync(StreamReader reader, string source)
             {
-                while (!reader.EndOfStream)
+                while (true)
                 {
                     string line = await reader.ReadLineAsync();
+                    if (line == null) break;
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     line = Regex.Replace(line, @"\x1B\[[^@-~]*[@-~]", "");
 
-                    if (!isBackend)
+                    if (serviceType != "Backend")
                         continue;
 
-                    var match = serilogRegex.Match(line);
-                    if (!match.Success)
-                        match = aspnetRegex.Match(line);
+                    var match2 = serilogRegex.Match(line);
+                    if (!match2.Success)
+                        match2 = aspnetRegex.Match(line);
 
-                    if (!match.Success)
+                    if (!match2.Success)
                     {
                         // Uncomment to debug raw log formats:
                         // Console.WriteLine($"[RAW:{source}] {line}");
                         continue;
                     }
 
-                    string method = match.Groups[1].Value;
-                    string endpoint = match.Groups[2].Value;
-                    string status = match.Groups[3].Value;
-                    string latency = match.Groups[4].Value;
+                    string method = match2.Groups[1].Value;
+                    string endpoint = match2.Groups[2].Value;
+                    string status = match2.Groups[3].Value;
+                    string latency = match2.Groups[4].Value;
 
                     if (endpoint.Length > 40)
                         endpoint = endpoint.Substring(0, 37) + "...";
