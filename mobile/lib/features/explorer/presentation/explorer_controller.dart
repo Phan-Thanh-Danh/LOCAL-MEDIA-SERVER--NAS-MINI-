@@ -3,6 +3,10 @@ import '../data/file_service.dart';
 import '../../vault/data/vault_service.dart';
 import '../models/file_item.dart';
 
+enum FileFilterType { all, folder, video, image, other }
+enum FileSortField { name, lastModified, size, type }
+enum FileSortDirection { asc, desc }
+
 class ExplorerState {
   final bool isLoading;
   final String? error;
@@ -11,6 +15,9 @@ class ExplorerState {
   final bool isVaultUnlocked;
   final FileItem? itemToMove;
   final Map<String, String> lockedFolderPasswords;
+  final FileFilterType filterType;
+  final FileSortField sortField;
+  final FileSortDirection sortDirection;
 
   ExplorerState({
     this.isLoading = false,
@@ -20,6 +27,9 @@ class ExplorerState {
     this.isVaultUnlocked = false,
     this.itemToMove,
     this.lockedFolderPasswords = const {},
+    this.filterType = FileFilterType.all,
+    this.sortField = FileSortField.name,
+    this.sortDirection = FileSortDirection.asc,
   });
 
   ExplorerState copyWith({
@@ -31,6 +41,9 @@ class ExplorerState {
     FileItem? itemToMove,
     bool clearItemToMove = false,
     Map<String, String>? lockedFolderPasswords,
+    FileFilterType? filterType,
+    FileSortField? sortField,
+    FileSortDirection? sortDirection,
   }) {
     return ExplorerState(
       isLoading: isLoading ?? this.isLoading,
@@ -40,6 +53,9 @@ class ExplorerState {
       isVaultUnlocked: isVaultUnlocked ?? this.isVaultUnlocked,
       itemToMove: clearItemToMove ? null : (itemToMove ?? this.itemToMove),
       lockedFolderPasswords: lockedFolderPasswords ?? this.lockedFolderPasswords,
+      filterType: filterType ?? this.filterType,
+      sortField: sortField ?? this.sortField,
+      sortDirection: sortDirection ?? this.sortDirection,
     );
   }
 }
@@ -146,6 +162,22 @@ class ExplorerController extends Notifier<ExplorerState> {
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
+  }
+
+  void setFilterType(FileFilterType type) {
+    state = state.copyWith(filterType: type);
+  }
+
+  void setSortField(FileSortField field) {
+    state = state.copyWith(sortField: field);
+  }
+
+  void toggleSortDirection() {
+    state = state.copyWith(
+      sortDirection: state.sortDirection == FileSortDirection.asc
+          ? FileSortDirection.desc
+          : FileSortDirection.asc,
+    );
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/storage/secure_storage_service.dart';
+import '../models/file_item.dart';
 import 'explorer_controller.dart';
 import 'widgets/file_list_item.dart';
 import 'widgets/file_grid_item.dart';
@@ -30,7 +31,61 @@ class ExplorerScreen extends ConsumerStatefulWidget {
 class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
   bool _isGridView = false;
 
-  void _onItemTap(dynamic item, ExplorerController controller) {
+  List<FileItem> _getFilteredAndSortedItems(
+    List<FileItem> items, 
+    FileFilterType filterType,
+    FileSortField sortField,
+    FileSortDirection sortDirection,
+  ) {
+    // 1. Filter
+    var result = items.where((item) {
+      if (filterType == FileFilterType.all) return true;
+      if (filterType == FileFilterType.folder) return item.isDirectory;
+      
+      final ext = item.name.split('.').last.toLowerCase();
+      final isVideo = ['mp4', 'mkv', 'avi', 'mov', 'webm'].contains(ext);
+      final isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].contains(ext);
+      
+      if (filterType == FileFilterType.video) return !item.isDirectory && isVideo;
+      if (filterType == FileFilterType.image) return !item.isDirectory && isImage;
+      if (filterType == FileFilterType.other) return !item.isDirectory && !isVideo && !isImage;
+      
+      return true;
+    }).toList();
+
+    // 2. Sort
+    result.sort((a, b) {
+      if ((sortField == FileSortField.name || sortField == FileSortField.type) && a.isDirectory != b.isDirectory) {
+        return a.isDirectory ? -1 : 1;
+      }
+
+      int comparison = 0;
+      switch (sortField) {
+        case FileSortField.name:
+          comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          break;
+        case FileSortField.lastModified:
+          comparison = a.lastModified.compareTo(b.lastModified);
+          break;
+        case FileSortField.size:
+          comparison = a.size.compareTo(b.size);
+          break;
+        case FileSortField.type:
+          final extA = a.isDirectory ? '' : a.name.split('.').last.toLowerCase();
+          final extB = b.isDirectory ? '' : b.name.split('.').last.toLowerCase();
+          comparison = extA.compareTo(extB);
+          if (comparison == 0) {
+            comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          }
+          break;
+      }
+      return sortDirection == FileSortDirection.asc ? comparison : -comparison;
+    });
+
+    return result;
+  }
+
+  void _onItemTap(dynamic item, ExplorerController controller, List<FileItem> currentItems) {
     if (item.isDirectory) {
       if (item.isLocked && !ref.read(explorerControllerProvider).isVaultUnlocked) {
         _showUnlockVaultDialog(item.relativePath);
@@ -38,7 +93,7 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
         controller.navigateToPath(item.relativePath);
       }
     } else {
-      final items = ref.read(explorerControllerProvider).items.where((i) => !i.isDirectory).toList();
+      final items = currentItems.where((i) => !i.isDirectory).toList();
       final initialIndex = items.indexWhere((i) => i.relativePath == item.relativePath);
       context.push('/media-preview', extra: {
         'items': items,
@@ -216,11 +271,46 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(explorerControllerProvider);
     final controller = ref.read(explorerControllerProvider.notifier);
+    final filteredItems = _getFilteredAndSortedItems(state.items, state.filterType, state.sortField, state.sortDirection);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Local Media Server'),
         actions: [
+          PopupMenuButton<dynamic>(
+            icon: Icon(
+              LucideIcons.sliders,
+              color: state.filterType != FileFilterType.all || state.sortField != FileSortField.name || state.sortDirection != FileSortDirection.asc 
+                  ? AppColors.primary 
+                  : AppColors.textPrimary,
+            ),
+            onSelected: (value) {
+               if (value is FileFilterType) {
+                 controller.setFilterType(value);
+               } else if (value is FileSortField) {
+                 controller.setSortField(value);
+               } else if (value is FileSortDirection) {
+                 if (state.sortDirection != value) controller.toggleSortDirection();
+               }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(enabled: false, child: Text('Sắp xếp theo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary))),
+              PopupMenuItem(value: FileSortField.name, child: Text(state.sortField == FileSortField.name ? '✓  Tên' : '     Tên')),
+              PopupMenuItem(value: FileSortField.lastModified, child: Text(state.sortField == FileSortField.lastModified ? '✓  Ngày sửa' : '     Ngày sửa')),
+              PopupMenuItem(value: FileSortField.size, child: Text(state.sortField == FileSortField.size ? '✓  Kích thước' : '     Kích thước')),
+              const PopupMenuDivider(),
+              const PopupMenuItem(enabled: false, child: Text('Thứ tự', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary))),
+              PopupMenuItem(value: FileSortDirection.asc, child: Text(state.sortDirection == FileSortDirection.asc ? '✓  Tăng dần' : '     Tăng dần')),
+              PopupMenuItem(value: FileSortDirection.desc, child: Text(state.sortDirection == FileSortDirection.desc ? '✓  Giảm dần' : '     Giảm dần')),
+              const PopupMenuDivider(),
+              const PopupMenuItem(enabled: false, child: Text('Lọc loại file', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary))),
+              PopupMenuItem(value: FileFilterType.all, child: Text(state.filterType == FileFilterType.all ? '✓  Tất cả' : '     Tất cả')),
+              PopupMenuItem(value: FileFilterType.folder, child: Text(state.filterType == FileFilterType.folder ? '✓  Thư mục' : '     Thư mục')),
+              PopupMenuItem(value: FileFilterType.video, child: Text(state.filterType == FileFilterType.video ? '✓  Video' : '     Video')),
+              PopupMenuItem(value: FileFilterType.image, child: Text(state.filterType == FileFilterType.image ? '✓  Hình ảnh' : '     Hình ảnh')),
+              PopupMenuItem(value: FileFilterType.other, child: Text(state.filterType == FileFilterType.other ? '✓  Khác' : '     Khác')),
+            ],
+          ),
           IconButton(
             icon: Icon(
               state.isVaultUnlocked ? LucideIcons.unlock : LucideIcons.lock,
@@ -342,13 +432,16 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
                       )
                     : RefreshIndicator(
                         onRefresh: controller.refresh,
-                        child: state.items.isEmpty
+                        child: filteredItems.isEmpty
                             ? ListView(
                                 children: [
                                   SizedBox(
                                     height: MediaQuery.of(context).size.height * 0.6,
-                                    child: const Center(
-                                      child: Text('Thư mục trống', style: TextStyle(color: AppColors.textSecondary)),
+                                    child: Center(
+                                      child: Text(
+                                        state.items.isEmpty ? 'Thư mục trống' : 'Không có tập tin nào khớp với bộ lọc', 
+                                        style: const TextStyle(color: AppColors.textSecondary)
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -361,23 +454,23 @@ class _ExplorerScreenState extends ConsumerState<ExplorerScreen> {
                                       crossAxisSpacing: 16,
                                       mainAxisSpacing: 16,
                                     ),
-                                    itemCount: state.items.length,
+                                    itemCount: filteredItems.length,
                                     itemBuilder: (context, index) {
-                                      final item = state.items[index];
+                                      final item = filteredItems[index];
                                       return FileGridItem(
                                         item: item,
-                                        onTap: () => _onItemTap(item, controller),
+                                        onTap: () => _onItemTap(item, controller, filteredItems),
                                         onMoreTap: () => _showFileActions(item),
                                       );
                                     },
                                   )
                                 : ListView.builder(
-                                    itemCount: state.items.length,
+                                    itemCount: filteredItems.length,
                                     itemBuilder: (context, index) {
-                                      final item = state.items[index];
+                                      final item = filteredItems[index];
                                       return FileListItem(
                                         item: item,
-                                        onTap: () => _onItemTap(item, controller),
+                                        onTap: () => _onItemTap(item, controller, filteredItems),
                                         onMoreTap: () => _showFileActions(item),
                                       );
                                     },
